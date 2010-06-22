@@ -1,4 +1,5 @@
 /*
+ * vim: ts=8 noexpandtab sw=8 :
  *	HashTWM
  *	An automatic Tiling Window Manager for XP/Vista in spirit of dwm
  *	Copyright 2008-2009, Zane Ashby, http://demonastery.org
@@ -16,7 +17,7 @@
  */
 
 #define NAME			"HashTWM" 	/* Used for Window Name/Class */
-#define VERSION			"HashTWM 0.8Beta" 	/* Used for Version Box - Wait there isn't one, oh well */
+#define VERSION			"HashTWM 0.9Beta" 	/* Used for Version Box - Wait there isn't one, oh well */
 
 //#define REMOTE // Not finished, but half working
 
@@ -30,28 +31,65 @@
 
 #define DEFAULT_MODKEY 		MOD_CONTROL | MOD_ALT
 #define MAX_IGNORE 		16 	/* Allows 16 window classes to be ignored */
+#define DEFAULT_TILING_MODE	0 	/* Vertical tiling is the default */
+#define TAGS			9
+
+/* Controls */
+enum controls {
+	KEY_SELECT_UP = 1,
+	KEY_SELECT_DOWN,
+	KEY_MOVE_MAIN,
+	KEY_EXIT,
+	KEY_MARGIN_LEFT,
+	KEY_MARGIN_RIGHT,
+	KEY_IGNORE,
+	KEY_MOUSE_LOCK,
+	KEY_TILING_MODE,
+	KEY_MOVE_UP,
+	KEY_MOVE_DOWN,
+	KEY_DISP_CLASS,
+	KEY_TILE,
+	KEY_UNTILE,
+	KEY_INC_AREA,
+	KEY_DEC_AREA,
+	KEY_CLOSE_WIN,
+	KEY_SWITCH_T1=100,
+	KEY_TOGGLE_T1=200
+};
+
+/* Node */
+typedef struct
+{
+	HWND hwnd; /* Used as key */
+	void* prev;
+	void* next;
+} node;
 
 /* Tags */
-#define TAG_1 1
-#define TAG_2 2
-#define TAG_3 4
-#define TAG_4 8
-#define TAG_5 16
-unsigned short current_tags = TAG_1;
+typedef struct
+{
+	node* nodes;
+	node* last_node;
+	node* current_window;
+	/* Tiling modes: 0=Vertical, 1=Horizontal, 2=Grid, 3=Fullscreen */
+	unsigned short tilingMode;
+	/* Xmonad style Master area count */
+	unsigned short masterarea_count;
+} tag;
 
 /* Global Variables */
+tag tags[TAGS];
+unsigned short current_tag = 0;
 int screen_x, screen_y, screen_width, screen_height;
 unsigned short experimental_mouse = 0;
 unsigned short mouse_pos_out = 0;
 int margin = 120;
 unsigned short disableNext = 0;
 unsigned short lockMouse = 0;
-unsigned short tilingMode = 0; 	/* 0=Vertical, 1=Horizontal, 2=Grid, 3=Fullscreen */
 unsigned short alpha = 255;
 unsigned short borders = 1;
 unsigned short ignoreCount = 0;
 unsigned short ignoreCountBorders = 0;
-unsigned short masterarea_count = 1; /* Xmonad style Master area count */
 int modkeys = DEFAULT_MODKEY;
 char ignoreClasses[MAX_IGNORE][128];		/* Don't include these classes in tiling */
 char ignoreClassesBorders[MAX_IGNORE][128]; 	/* Don't remove borders from these classes */
@@ -85,18 +123,6 @@ void SendRemoteQuery(HWND selfhwnd, int mode, int param)
 	SendMessage(FindWindow("HashTWM", NULL), WM_COPYDATA, (WPARAM)(HWND)selfhwnd, (LPARAM)(LPVOID)&cds);
 }
 #endif
-
-/* Node */
-typedef struct
-{
-	HWND hwnd; /* Used as key */
-	unsigned short tags; /* Bitmask - Actually not yet, but will become one */
-	void* prev;
-	void* next;
-} node;
-
-node *nodes = NULL; 	/* Should always point to first node */
-node *current = NULL; 	/* Should always point to current node */
 
 void RemoveTransparency(HWND hwnd)
 {
@@ -161,62 +187,10 @@ int IsGoodWindow(HWND hwnd)
 
 /* List Methods */
 
-void AddNode(HWND hwnd)
+node* FindNode(HWND hwnd, unsigned short tag)
 {
-	RemoveBorder(hwnd);
-	AddTransparency(hwnd);
-
-	node *new = (node*)malloc(sizeof(node));
-	new->hwnd = hwnd;
-	new->tags = current_tags;
-	new->prev = NULL;
-	new->next = NULL;
-
-	AddTransparency(hwnd);
-
-	if (nodes == NULL) {
-		new->prev = new;
-		nodes = new;
-		current = nodes;
-		return;
-	}
-
-	new->prev = nodes->prev;
-	nodes->prev = new;
-	new->next = nodes;
-	nodes = new;
-	current = nodes;
-}
-
-void RemoveNode(HWND hwnd)
-{
-	node *temp = nodes;
-	for (temp = nodes; temp; temp = temp->next) {
-		if (temp->hwnd == hwnd) {
-			if (temp != nodes) {
-				((node*)temp->prev)->next = temp->next;
-			} else {
-				nodes = temp->next;
-			}
-			if (temp->next) {
-				((node*)temp->next)->prev = temp->prev;
-			} else if (nodes) {
-				nodes->prev = temp->prev;
-			}
-			node *temp2 = temp->prev;
-			RemoveTransparency(temp->hwnd);
-			AddBorder(temp->hwnd);
-			free(temp);
-			temp = temp2;
-			current = NULL;
-			return;
-		}
-	}
-}
-
-node* FindNode(HWND hwnd)
-{
-	node *temp = nodes;
+	node *temp;
+	node *nodes = tags[tag].nodes;
 	for (temp = nodes; temp; temp = temp->next) {
 		if (temp->hwnd == hwnd) {
 			return temp;
@@ -225,19 +199,110 @@ node* FindNode(HWND hwnd)
 	return NULL;
 }
 
+node* FullFindNode(HWND hwnd)
+{
+	unsigned short tag;
+	node *found;
+	for (tag=0; tag<TAGS; tag++) {
+		found = FindNode(hwnd, tag);
+		if (found) return found;
+	}
+	return NULL;
+}
+
+void AddNode(HWND hwnd, unsigned short tag)
+{
+	RemoveBorder(hwnd);
+	AddTransparency(hwnd);
+
+	if (FindNode(hwnd, tag)) return;
+
+	node *new = (node*)malloc(sizeof(node));
+	new->hwnd = hwnd;
+	new->prev = NULL;
+	new->next = NULL;
+
+	AddTransparency(hwnd);
+
+	if (tags[tag].nodes == NULL) {
+		new->prev = new;
+		tags[tag].nodes = new;
+		tags[tag].current_window = new;
+		tags[tag].last_node = new;
+	} else {
+		tags[tag].last_node->next = new;
+		new->prev = tags[tag].last_node;
+		tags[tag].last_node = new;
+		tags[tag].nodes->prev = new;
+	}
+}
+
+void RemoveNode(HWND hwnd, unsigned short tag)
+{
+	node *temp;
+	temp = FindNode(hwnd, tag);
+	if (!temp) return;
+	// Remove the only node
+	if (tags[tag].nodes == tags[tag].last_node) {
+		tags[tag].nodes = NULL;
+		tags[tag].last_node = NULL;
+		tags[tag].current_window = NULL;
+	// Remove the first node
+	} else if (temp == tags[tag].nodes) {
+		tags[tag].nodes = temp->next;
+		tags[tag].nodes->prev = tags[tag].last_node;
+	// Remove the last node
+	} else if (temp == tags[tag].last_node) {
+		tags[tag].last_node = temp->prev;
+		tags[tag].nodes->prev = temp->prev;
+		tags[tag].last_node->next = NULL;
+	// Remove any other node
+	} else {
+		((node*)temp->prev)->next = temp->next;
+		((node*)temp->next)->prev = temp->prev;
+	}
+	if (tags[tag].current_window == temp)
+		tags[tag].current_window = temp->prev;
+	RemoveTransparency(temp->hwnd);
+	if (!FullFindNode(hwnd))
+		AddBorder(temp->hwnd);
+	free(temp);
+	return;
+}
+
+void FullRemoveNode(HWND hwnd)
+{
+	unsigned short tag;
+	for (tag=0; tag<TAGS; tag++)
+		RemoveNode(hwnd, tag);
+}
+
+void ToggleTag(unsigned short tag) {
+	HWND hwnd = GetForegroundWindow();
+
+	if (FindNode(hwnd, tag))
+		RemoveNode(hwnd, tag);
+	else
+		AddNode(hwnd, tag);
+}
+
 void SwapWindowWithNode(node *window)
 {
-	if (current && window) {
+
+	if (tags[current_tag].current_window == window) return;
+	if (tags[current_tag].current_window && window) {
 		AddTransparency(window->hwnd);
 		HWND temp = window->hwnd;
-		window->hwnd = current->hwnd;
-		current->hwnd = temp;
-		current = window;
+		window->hwnd = tags[current_tag].current_window->hwnd;
+		tags[current_tag].current_window->hwnd = temp;
+		tags[current_tag].current_window = window;
 	}
 }
 
 void FocusCurrent()
 {
+	node *current = tags[current_tag].current_window;
+
 	if (current) {
 		SetForegroundWindow(current->hwnd);
 		if (lockMouse) {
@@ -250,30 +315,12 @@ void FocusCurrent()
 	}
 }
 
-node* GetFirstNode()
-{
-	node *temp, *first = nodes;
-	for (temp = nodes; temp; temp = temp->next)
-	{
-		if (temp->tags == current_tags) {
-			return temp;
-		}
-		if (temp == first) return current;
-	}
-}
-
 /*
  * Returns the previous Node with the same tag as current
  */
 node* GetPreviousNode()
 {
-	node *temp, *first = current;
-	for (temp = current->prev; temp; temp = temp->prev) {
-		if (temp->tags == current_tags) {
-			return temp;
-		}
-		if (temp == first) return temp;
-	}
+	return tags[current_tag].current_window->prev;
 }
 
 /*
@@ -281,14 +328,12 @@ node* GetPreviousNode()
  */
 node* GetNextNode()
 {
-	node *temp, *first = current;
-	for (temp = current; temp;) {
-		if (temp->next) { temp = temp->next; } else { temp = nodes; }
-		if (temp->tags == current_tags) {
-			return temp;
-		}
-		if (temp == first) return temp;
-	}
+	tag *thistag = &tags[current_tag];
+
+	if (thistag->current_window && thistag->current_window->next)
+		return thistag->current_window->next;
+	else
+		return thistag->nodes;
 }
 
 /*
@@ -296,13 +341,23 @@ node* GetNextNode()
  */
 int CountNodes()
 {
-	node *temp = nodes;
+	node *temp;
+	node *nodes = tags[current_tag].nodes;
 	int i = 0;
 	for (temp = nodes; temp; temp = temp->next) {
-		if (temp->tags == current_tags)
-			i++;
+		i++;
 	}
 	return i - 1;
+}
+
+/*
+ * Minimizes all the windows with the specified tag
+ */
+void MinimizeTag(unsigned short tag)
+{
+	node *temp;
+	for (temp=tags[tag].nodes; temp; temp = temp->next)
+		ShowWindow(temp->hwnd, SW_MINIMIZE);
 }
 
 /*
@@ -311,132 +366,127 @@ int CountNodes()
 void ArrangeWindows()
 {
 	int a, i, x, y, width, height;
+	unsigned short masterarea_count;
 
 	a = CountNodes();
 	if (a == -1) return;
 	i = 0;
 
-	node *temp = nodes;
-//	for (temp = nodes; i <= a; temp = temp->next, i++) {
+	node *nodes;
+	node *temp;
+	nodes = tags[current_tag].nodes;
+	masterarea_count = tags[current_tag].masterarea_count;
 	for (temp = nodes; temp; temp = temp->next) {
-		if (temp->tags == current_tags) {
-			ShowWindow(temp->hwnd, SW_RESTORE);
-			if (a == 0) { 	/* I think this is universal to all tiling modes */
-				x = 0;
-				y = 0;
-				width = screen_width;
-				height = screen_height;
-			} else {
-				switch (tilingMode)
-				{
-					default:
-					case 0: 	/* Vertical */
-						{
-							if (i < masterarea_count) {
-								x = 0;
-								y = (screen_height / masterarea_count) * i;
-								width = (screen_width / 2) + margin;
-								height = (screen_height / masterarea_count);
-							} else {
-								x = (screen_width / 2) + margin;
-								y = (screen_height / ((a + 1) - masterarea_count)) * (a - i);
-								width = (screen_width / 2) - margin;
-								height = (screen_height / ((a + 1) - masterarea_count));
-							}
-						}
-						break;
-					case 1: 	/* Horizontal */
-						{
-							if (i < masterarea_count) {
-								/* Main window */
-								x = (screen_width / masterarea_count) * i;
-								y = 0;
-								width = (screen_width / masterarea_count);
-								height = (screen_height / 2) + margin;
-							} else {
-								/* Normal windows to be tiled */
-								x = (screen_width / ((a + 1) - masterarea_count)) * (a - i);
-								y = (screen_height / 2) + margin;
-								width = (screen_width / ((a + 1) - masterarea_count));
-								height = (screen_height / 2) - margin;
-							}
-						}
-						break;
-					case 2: 	/* Grid - See dvtm-license.txt */
-						{
-							int ah, aw, rows, cols;
-							for (cols = 0; cols <= (a + 1)/2; cols++) {
-								if (cols * cols >= (a + 1)) {
-									break;
-								}
-							}
-							rows = (cols && (cols - 1) * cols >= (a + 1)) ? cols - 1 : cols;
-							height = screen_height / (rows ? rows : 1);
-							width = screen_width / (cols ? cols : 1);
-							if (rows > 1 && i == (rows * cols) - cols && ((a + 1) - i) <= ((a + 1) % cols)) {
-								width = screen_width / ((a + 1) - i);
-							}
-							x = (i % cols) * width;
-							y = (i / cols) * height;
-							ah = (i >= cols * (rows - 1)) ? screen_height - height * rows: 0;
-							if (rows > 1 && i == (a + 1) - 1 && ((a + 1) - i) < ((a + 1) % cols)) {
-								aw = screen_width - width * ((a + 1) % cols);
-							} else {
-								aw = ((i + 1) % cols == 0) ? screen_width - width * cols : 0;
-							}
-							width += aw;
-							height += ah;
-						}
-						break;
-					case 3: 	/* Fullscreen - This could probably be changed to work better */
-						x = 0;
-						y = 0;
-						width = screen_width;
-						height = screen_height;
-						break;
-				}
-			}
-			SetWindowPos(temp->hwnd, HWND_TOP, x + screen_x, y + screen_y, width, height, SWP_SHOWWINDOW);
-			i++;
+		ShowWindow(temp->hwnd, SW_RESTORE);
+		if (a == 0) { 	/* I think this is universal to all tiling modes */
+			x = 0;
+			y = 0;
+			width = screen_width;
+			height = screen_height;
 		} else {
-			ShowWindow(temp->hwnd, SW_MINIMIZE);
+			switch (tags[current_tag].tilingMode)
+			{
+				default:
+				case 0: 	/* Vertical */
+					{
+						if (i < masterarea_count) {
+							x = 0;
+							y = (screen_height / masterarea_count) * i;
+							width = (screen_width / 2) + margin;
+							height = (screen_height / masterarea_count);
+						} else {
+							x = (screen_width / 2) + margin;
+							y = (screen_height / ((a + 1) - masterarea_count)) * (a - i);
+							width = (screen_width / 2) - margin;
+							height = (screen_height / ((a + 1) - masterarea_count));
+						}
+					}
+					break;
+				case 1: 	/* Horizontal */
+					{
+						if (i < masterarea_count) {
+							/* Main window */
+							x = (screen_width / masterarea_count) * i;
+							y = 0;
+							width = (screen_width / masterarea_count);
+							height = (screen_height / 2) + margin;
+						} else {
+							/* Normal windows to be tiled */
+							x = (screen_width / ((a + 1) - masterarea_count)) * (a - i);
+							y = (screen_height / 2) + margin;
+							width = (screen_width / ((a + 1) - masterarea_count));
+							height = (screen_height / 2) - margin;
+						}
+					}
+					break;
+				case 2: 	/* Grid - See dvtm-license.txt */
+					{
+						int ah, aw, rows, cols;
+						for (cols = 0; cols <= (a + 1)/2; cols++) {
+							if (cols * cols >= (a + 1)) {
+								break;
+							}
+						}
+						rows = (cols && (cols - 1) * cols >= (a + 1)) ? cols - 1 : cols;
+						height = screen_height / (rows ? rows : 1);
+						width = screen_width / (cols ? cols : 1);
+						if (rows > 1 && i == (rows * cols) - cols && ((a + 1) - i) <= ((a + 1) % cols)) {
+							width = screen_width / ((a + 1) - i);
+						}
+						x = (i % cols) * width;
+						y = (i / cols) * height;
+						ah = (i >= cols * (rows - 1)) ? screen_height - height * rows: 0;
+						if (rows > 1 && i == (a + 1) - 1 && ((a + 1) - i) < ((a + 1) % cols)) {
+							aw = screen_width - width * ((a + 1) % cols);
+						} else {
+							aw = ((i + 1) % cols == 0) ? screen_width - width * cols : 0;
+						}
+						width += aw;
+						height += ah;
+					}
+					break;
+				case 3: 	/* Fullscreen - This could probably be changed to work better */
+					x = 0;
+					y = 0;
+					width = screen_width;
+					height = screen_height;
+					break;
+			}
 		}
+		SetWindowPos(temp->hwnd, HWND_TOP, x + screen_x, y + screen_y, width, height, SWP_SHOWWINDOW);
+		i++;
 	}
 	FocusCurrent();
 }
 
 void RegisterHotkeys(HWND hwnd)
 {
-	RegisterHotKey(hwnd, 1, modkeys, 'K'); 		/* Select Up */
-	RegisterHotKey(hwnd, 2, modkeys, 'J'); 		/* Select Down */
-	RegisterHotKey(hwnd, 3, modkeys, VK_RETURN); 	/* Move Window in to Main Area */
-	RegisterHotKey(hwnd, 4, modkeys, VK_ESCAPE); 	/* Exit */
-	RegisterHotKey(hwnd, 5, modkeys, 'H'); 		/* Margin Left */
-	RegisterHotKey(hwnd, 6, modkeys, 'L'); 		/* Margin Right */
-	RegisterHotKey(hwnd, 7, modkeys, 'I'); 		/* Ignore Mode */
-	RegisterHotKey(hwnd, 8, modkeys, 'U'); 		/* Mouse Lock Mode */
-	RegisterHotKey(hwnd, 9, modkeys, VK_SPACE); 	/* Switch Tiling Mode */
-	RegisterHotKey(hwnd, 10, modkeys | MOD_SHIFT, 'K'); 	/* Move Window Up */
-	RegisterHotKey(hwnd, 11, modkeys | MOD_SHIFT, 'J'); 	/* Move Window Down */
-	RegisterHotKey(hwnd, 12, modkeys, 'Y'); 	/* Display Window Class */
-	RegisterHotKey(hwnd, 13, modkeys, 'O'); 	/* Tile Window */
-	RegisterHotKey(hwnd, 14, modkeys, 'P'); 	/* Untile Window */
-	RegisterHotKey(hwnd, 15, modkeys, 'Z'); 	/* Increase Master Area */
-	RegisterHotKey(hwnd, 16, modkeys, 'X'); 	/* Decrease Master Area */
-	RegisterHotKey(hwnd, 17, modkeys, 'C'); 	/* Close Foreground Window */
+	RegisterHotKey(hwnd, KEY_SELECT_UP, modkeys, 'K'); 		/* Select Up */
+	RegisterHotKey(hwnd, KEY_SELECT_DOWN, modkeys, 'J'); 		/* Select Down */
+	RegisterHotKey(hwnd, KEY_MOVE_MAIN, modkeys, VK_RETURN); 	/* Move Window in to Main Area */
+	RegisterHotKey(hwnd, KEY_EXIT, modkeys, VK_ESCAPE); 	/* Exit */
+	RegisterHotKey(hwnd, KEY_MARGIN_LEFT, modkeys, 'H'); 		/* Margin Left */
+	RegisterHotKey(hwnd, KEY_MARGIN_RIGHT, modkeys, 'L'); 		/* Margin Right */
+	RegisterHotKey(hwnd, KEY_IGNORE, modkeys, 'I'); 		/* Ignore Mode */
+	RegisterHotKey(hwnd, KEY_MOUSE_LOCK, modkeys, 'U'); 		/* Mouse Lock Mode */
+	RegisterHotKey(hwnd, KEY_TILING_MODE, modkeys, VK_SPACE); 	/* Switch Tiling Mode */
+	RegisterHotKey(hwnd, KEY_MOVE_UP, modkeys | MOD_SHIFT, 'K'); 	/* Move Window Up */
+	RegisterHotKey(hwnd, KEY_MOVE_DOWN, modkeys | MOD_SHIFT, 'J'); 	/* Move Window Down */
+	RegisterHotKey(hwnd, KEY_DISP_CLASS, modkeys, 'Y'); 	/* Display Window Class */
+	RegisterHotKey(hwnd, KEY_TILE, modkeys, 'O'); 	/* Tile Window */
+	RegisterHotKey(hwnd, KEY_UNTILE, modkeys, 'P'); 	/* Untile Window */
+	RegisterHotKey(hwnd, KEY_INC_AREA, modkeys, 'Z'); 	/* Increase Master Area */
+	RegisterHotKey(hwnd, KEY_DEC_AREA, modkeys, 'X'); 	/* Decrease Master Area */
+	RegisterHotKey(hwnd, KEY_CLOSE_WIN, modkeys, 'C'); 	/* Close Foreground Window */
 
 	// Tags
-	RegisterHotKey(hwnd, 18, modkeys, '1'); 	/* Switch to tag 1 */
-	RegisterHotKey(hwnd, 19, modkeys, '2'); 	/* Switch to tag 2 */
-	RegisterHotKey(hwnd, 20, modkeys, '3'); 	/* Switch to tag 3 */
-	RegisterHotKey(hwnd, 21, modkeys, '4'); 	/* Switch to tag 4 */
-	RegisterHotKey(hwnd, 22, modkeys, '5'); 	/* Switch to tag 5 */
-
-	RegisterHotKey(hwnd, 23, modkeys | MOD_SHIFT, '1'); 	/* Move to tag 1 */
-	RegisterHotKey(hwnd, 24, modkeys | MOD_SHIFT, '2'); 	/* Move to tag 2 */
-	RegisterHotKey(hwnd, 25, modkeys | MOD_SHIFT, '3'); 	/* Move to tag 3 */
-	RegisterHotKey(hwnd, 26, modkeys | MOD_SHIFT, '4'); 	/* Move to tag 4 */
-	RegisterHotKey(hwnd, 27, modkeys | MOD_SHIFT, '5'); 	/* Move to tag 5 */
+	char key[2];
+	int i;
+	for (i=0; i<TAGS; i++) {
+		sprintf(key, "%d", i+1);
+		RegisterHotKey(hwnd, KEY_SWITCH_T1+i, modkeys, *key); 	/* Switch to tag N */
+		RegisterHotKey(hwnd, KEY_TOGGLE_T1+i, modkeys | MOD_SHIFT, *key); 	/* Toggle tag N */
+	}
 }
 
 void UnregisterHotkeys(HWND hwnd)
@@ -465,6 +515,10 @@ void UpdateMousePos(HWND hwnd)
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	node *current;
+	node *nodes;
+	unsigned short tag;
+
 	switch (msg)
 	{
 		case WM_CREATE:
@@ -483,16 +537,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				if (experimental_mouse) {
 					KillTimer(hwnd, 2); 	/* Mouse Poll Timer */
 				}
-				for (current = nodes; current;) { 	/* Add window borders, reset opacity and remove */
-					node *temp = NULL;
-					ShowWindow(current->hwnd, SW_RESTORE);
-					AddBorder(current->hwnd);
-					RemoveTransparency(current->hwnd);
-					temp = current->next;
-					free(current);
-					current = temp;
+				for (tag=0; tag<TAGS; tag++) {
+					nodes = tags[tag].nodes;
+					for (current = nodes; current;) { 	/* Add window borders, reset opacity and remove */
+						node *temp = NULL;
+						ShowWindow(current->hwnd, SW_RESTORE);
+						AddBorder(current->hwnd);
+						RemoveTransparency(current->hwnd);
+						temp = current->next;
+						free(current);
+						current = temp;
+					}
+					DestroyWindow(hwnd);
 				}
-				DestroyWindow(hwnd);
 			}
 			break;
 		case WM_DESTROY:
@@ -523,45 +580,55 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 #ifdef REMOTE
 			SendRemoteQuery(hwnd, wParam, 0);
 #endif
+			if (wParam >= KEY_TOGGLE_T1 && wParam < (KEY_TOGGLE_T1 + TAGS)) {
+				ToggleTag(wParam - KEY_TOGGLE_T1);
+				break;
+			} else if (wParam >= KEY_SWITCH_T1 && wParam < (KEY_SWITCH_T1 + TAGS)) {
+				MinimizeTag(current_tag);
+				current_tag = wParam - KEY_SWITCH_T1;
+				ArrangeWindows();
+				break;
+			}
+			current = tags[current_tag].current_window;
 			switch (wParam)
 			{
-				case 1: 	/* Select Up */
+				case KEY_SELECT_UP: 	/* Select Up */
 					if (current) {
 						AddTransparency(current->hwnd);
-						current = GetNextNode();
+						tags[current_tag].current_window = GetNextNode();
 						FocusCurrent();
 					}
 					break;
-				case 2: 	/* Select Down */
+				case KEY_SELECT_DOWN: 	/* Select Down */
 					if (current) {
 						AddTransparency(current->hwnd);
-						current = GetPreviousNode();
+						tags[current_tag].current_window = GetPreviousNode();
 						FocusCurrent();
 					}
 					break;
-				case 3: 	/* Move Window in to Main Area */
-					SwapWindowWithNode(GetFirstNode());
+				case KEY_MOVE_MAIN: 	/* Move Window in to Main Area */
+					SwapWindowWithNode(tags[current_tag].nodes);
 					ArrangeWindows();
 					break;
-				case 4: 	/* Exit */
+				case KEY_EXIT: 	/* Exit */
 					PostMessage(hwnd, WM_CLOSE, 0, 0);
 					break;
-				case 5: 	/* Margin Left */
+				case KEY_MARGIN_LEFT: 	/* Margin Left */
 					margin -= 20;
 					ArrangeWindows();
 					break;
-				case 6: 	/* Margin Right */
+				case KEY_MARGIN_RIGHT: 	/* Margin Right */
 					margin += 20;
 					ArrangeWindows();
 					break;
-				case 7: 	/* Ignore Mode */
+				case KEY_IGNORE: 	/* Ignore Mode */
 					if (!disableNext) {
 						disableNext = 1;
 					} else {
 						disableNext = 0;
 					}
 					break;
-				case 8: 	/* Mouse Lock Mode */
+				case KEY_MOUSE_LOCK: 	/* Mouse Lock Mode */
 					if (lockMouse) {
 						lockMouse = 0;
 						ClipCursor(0);
@@ -570,26 +637,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						FocusCurrent();
 					}
 					break;
-				case 9: 	/* Switch Tiling Mode */
-					tilingMode++;
-					if (tilingMode > 3) {
-						tilingMode = 0;
-					}
+				case KEY_TILING_MODE: 	/* Switch Tiling Mode */
+					tags[current_tag].tilingMode = (tags[current_tag].tilingMode + 1) % 3;
 					ArrangeWindows();
 					break;
-				case 10: 	/* Move Window Up */
+				case KEY_MOVE_UP: 	/* Move Window Up */
 					if (current) {
 						SwapWindowWithNode(GetNextNode());
 						ArrangeWindows();
 					}
 					break;
-				case 11: 	/* Move Window Down */
+				case KEY_MOVE_DOWN: 	/* Move Window Down */
 					if (current) {
 						SwapWindowWithNode(GetPreviousNode());
 						ArrangeWindows();
 					}
 					break;
-				case 12: 	/* Display Window Class */
+				case KEY_DISP_CLASS: 	/* Display Window Class */
 					{
 						LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
 						GetClassName(GetForegroundWindow(), temp, 128);
@@ -597,66 +661,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						free(temp);
 					}
 					break;
-				case 13: 	/* Tile Window */
+				case KEY_TILE: 	/* Tile Window */
 					if (IsGoodWindow(GetForegroundWindow())) {
-						AddNode(GetForegroundWindow());
+						AddNode(GetForegroundWindow(), current_tag);
 						ArrangeWindows();
 					}
 					break;
-				case 14: 	/* Untile Window */
-					RemoveNode(GetForegroundWindow());
+				case KEY_UNTILE: 	/* Untile Window */
+					FullRemoveNode(GetForegroundWindow());
 					ArrangeWindows();
 					break;
-				case 15: 	/* Increase Master Area */
-					masterarea_count++;
+				case KEY_INC_AREA: 	/* Increase Master Area */
+					tags[current_tag].masterarea_count++;
 					ArrangeWindows();
 					break;
-				case 16: 	/* Decrease Master Area */
-					masterarea_count--;
+				case KEY_DEC_AREA: 	/* Decrease Master Area */
+					tags[current_tag].masterarea_count--;
 					ArrangeWindows();
 					break;
-				case 17:	/* Close Foreground Window */
+				case KEY_CLOSE_WIN:	/* Close Foreground Window */
 					PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0);
-					break;
-				case 18:	/* Switch to tag 1 */
-					current_tags = TAG_1;
-					ArrangeWindows();
-					break;
-				case 19:	/* Switch to tag 2 */
-					current_tags = TAG_2;
-					ArrangeWindows();
-					break;
-				case 20:	/* Switch to tag 3 */
-					current_tags = TAG_3;
-					ArrangeWindows();
-					break;
-				case 21:	/* Switch to tag 4 */
-					current_tags = TAG_4;
-					ArrangeWindows();
-					break;
-				case 22:	/* Switch to tag 5 */
-					current_tags = TAG_5;
-					ArrangeWindows();
-					break;
-				case 23:	/* Move to tag 1 */
-					current->tags = TAG_1;
-					ArrangeWindows();
-					break;
-				case 24:	/* Move to tag 2 */
-					current->tags = TAG_2;
-					ArrangeWindows();
-					break;
-				case 25:	/* Move to tag 3 */
-					current->tags = TAG_3;
-					ArrangeWindows();
-					break;
-				case 26:	/* Move to tag 4 */
-					current->tags = TAG_4;
-					ArrangeWindows();
-					break;
-				case 27:	/* Move to tag 5 */
-					current->tags = TAG_5;
-					ArrangeWindows();
 					break;
 			}
 			break;
@@ -677,19 +701,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				{
 					case HSHELL_WINDOWCREATED:
 						if (IsGoodWindow((HWND)lParam)) {
-							AddNode((HWND)lParam);
+							AddNode((HWND)lParam, current_tag);
 							ArrangeWindows();
 							FocusCurrent();
 						}
 						break;
 					case HSHELL_WINDOWDESTROYED:
-						RemoveNode((HWND)lParam);
+						FullRemoveNode((HWND)lParam);
 						ArrangeWindows();
 						FocusCurrent();
 						break;
 					case HSHELL_WINDOWACTIVATED:
 						{
-							node *found = FindNode((HWND)lParam);
+							node *found = FindNode((HWND)lParam, current_tag);
 							if (found) {
 								if (current) {
 									AddTransparency(current->hwnd);
@@ -714,7 +738,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
  */
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
 {
-	if (IsGoodWindow(hwnd)) { AddNode(hwnd); }
+	if (IsGoodWindow(hwnd)) { AddNode(hwnd, current_tag); }
 	return TRUE;
 }
 
@@ -734,6 +758,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	LPWSTR *argv = NULL;
 	int argc;
 	int i;
+	unsigned short tilingMode;
 
 	argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	for (i = 0; i < argc; i++) {
@@ -795,6 +820,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		} else if (!strcmp(arg, "-b")) {
 			borders = 0;
 		}
+	}
+
+	/* Initialize tags */
+	for (i=0; i<TAGS; i++) {
+		tags[i].nodes = NULL;
+		tags[i].last_node = NULL;
+		tags[i].current_window = NULL;
+		tags[i].tilingMode = DEFAULT_TILING_MODE;
+		tags[i].masterarea_count = 1;
 	}
 
 	LocalFree(argv);
