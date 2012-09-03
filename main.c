@@ -515,7 +515,7 @@ void UpdateMousePos(HWND hwnd)
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	node *current;
+	node *current = NULL;
 	node *nodes;
 	unsigned short tag;
 
