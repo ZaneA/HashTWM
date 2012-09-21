@@ -1,5 +1,5 @@
-HashTWM 0.8 Beta (Somewhat functional)
-A dwm-like automatic tiling window manager for Microsoft Windows, download at http://hashtwm.demonastery.org
+HashTWM
+A dwm-like automatic tiling window manager for Microsoft Windows, download at https://github.com/ZaneA/HashTWM/downloads
 
 Usage:
 Run HashTWM.exe.
