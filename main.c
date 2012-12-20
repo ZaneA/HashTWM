@@ -93,31 +93,6 @@ typedef BOOL (*RegisterShellHookWindowProc) (HWND);
 RegisterShellHookWindowProc RegisterShellHookWindow;
 UINT shellhookid; // Window Message id
 
-#ifdef REMOTE
-// Remote interface stuff
-typedef struct
-{
-  unsigned short dest; // 0 (HashTWM) or 1 (clients)
-  int mode;
-  int param;
-} RemoteInterface;
-
-void SendRemoteQuery(HWND selfhwnd, int mode, int param)
-{
-  RemoteInterface ri;
-  COPYDATASTRUCT cds;
-
-  ri.dest = 0; // Temp - Broadcast to us
-  ri.mode = mode;
-  ri.param = param;
-  cds.dwData = 1;
-  cds.cbData = sizeof(ri);
-  cds.lpData = &ri;
-
-  SendMessage(FindWindow("HashTWM", NULL), WM_COPYDATA, (WPARAM)(HWND)selfhwnd, (LPARAM)(LPVOID)&cds);
-}
-#endif
-
 void RemoveTransparency(HWND hwnd)
 {
   if (alpha < 255) {
@@ -542,31 +517,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
       PostQuitMessage(WM_QUIT);
       break;
-#ifdef REMOTE
-    case WM_COPYDATA:
-      {
-        PCOPYDATASTRUCT pCDS = (PCOPYDATASTRUCT)lParam;
-        if ((pCDS->dwData == 1) && ((RemoteInterface *)(pCDS->lpData))->dest == 0) {
-          switch (((RemoteInterface *)(pCDS->lpData))->mode)
-          {
-            case 0:
-              //MessageBox(NULL, "Select UP", "", MB_OK);
-              break;
-            case 1:
-              //MessageBox(NULL, "Select DOWN", "", MB_OK);
-              break;
-            default:
-              MessageBox(NULL, "Unrecognised Message", "", MB_OK);
-              break;
-          }
-        }
-      }
-      break;
-#endif
     case WM_HOTKEY:
-#ifdef REMOTE
-      SendRemoteQuery(hwnd, wParam, 0);
-#endif
       if (wParam >= KEY_TOGGLE_T1 && wParam < (KEY_TOGGLE_T1 + TAGS)) {
         ToggleTag(wParam - KEY_TOGGLE_T1);
         break;
