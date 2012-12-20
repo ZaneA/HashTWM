@@ -86,57 +86,26 @@ int margin = 120;
 unsigned short disableNext = 0;
 unsigned short lockMouse = 0;
 unsigned short alpha = 255;
-unsigned short borders = 1;
 unsigned short ignoreCount = 0;
-unsigned short ignoreCountBorders = 0;
 int modkeys = DEFAULT_MODKEY;
-char ignoreClasses[MAX_IGNORE][128]; // Don't include these classes in tiling
-char ignoreClassesBorders[MAX_IGNORE][128]; // Don't remove borders from these classes
+char ignoreClasses[MAX_IGNORE][128]; // Exclude tiling from the classes in here
+char includeClasses[MAX_IGNORE][128]; // Only tile the classes in here
+unsigned short include_mode = 0; // Exclude by default
 
 // Shell hook stuff
 typedef BOOL (*RegisterShellHookWindowProc) (HWND);
 RegisterShellHookWindowProc RegisterShellHookWindow;
 UINT shellhookid; // Window Message id
 
-void RemoveTransparency(HWND hwnd)
-{
-  if (alpha < 255) {
-    SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
-  }
-}
-
-void AddTransparency(HWND hwnd)
-{
-  if (alpha < 255) {
-    SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-    SetLayeredWindowAttributes(hwnd, RGB(255, 0, 0), alpha, LWA_COLORKEY | LWA_ALPHA);
-  }
-}
-
-int IgnoreBorders(HWND hwnd) {
+int IsInList(char **list, unsigned int length, HWND hwnd) {
   LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128); // I don't like this, but it works
   GetClassName(hwnd, temp, 128);
   int i;
-  for (i = 0; i < MAX_IGNORE; i++) {
-    if (!strcmp(temp, ignoreClassesBorders[i])) { return TRUE; }
+  for (i = 0; i < length; i++) {
+    if (!strcmp(temp, list[i])) { return TRUE; }
   }
   free(temp);
   return FALSE;
-}
-
-void RemoveBorder(HWND hwnd)
-{
-  if ((borders && !IgnoreBorders(hwnd)) || (!borders && IgnoreBorders(hwnd))) {
-    SetWindowLong(hwnd, GWL_STYLE, (GetWindowLong(hwnd, GWL_STYLE) & ~(WS_CAPTION | WS_SIZEBOX)));
-  }
-}
-
-void AddBorder(HWND hwnd)
-{
-  if ((borders && !IgnoreBorders(hwnd)) || (!borders && IgnoreBorders(hwnd))) {
-    SetWindowLong(hwnd, GWL_STYLE, (GetWindowLong(hwnd, GWL_STYLE) | (WS_CAPTION | WS_SIZEBOX)));
-    SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER); // Fix?
-  }
 }
 
 int IsGoodWindow(HWND hwnd)
@@ -189,17 +158,12 @@ node* FullFindNode(HWND hwnd)
 
 void AddNode(HWND hwnd, unsigned short tag)
 {
-  RemoveBorder(hwnd);
-  AddTransparency(hwnd);
-
   if (FindNode(hwnd, tag)) return;
 
   node *new = (node*)malloc(sizeof(node));
   new->hwnd = hwnd;
   new->prev = NULL;
   new->next = NULL;
-
-  AddTransparency(hwnd);
 
   if (tags[tag].nodes == NULL) {
     new->prev = new;
@@ -240,9 +204,6 @@ void RemoveNode(HWND hwnd, unsigned short tag)
   }
   if (tags[tag].current_window == temp)
     tags[tag].current_window = temp->prev;
-  RemoveTransparency(temp->hwnd);
-  if (!FullFindNode(hwnd))
-    AddBorder(temp->hwnd);
   free(temp);
   return;
 }
@@ -268,7 +229,6 @@ void SwapWindowWithNode(node *window)
 
   if (tags[current_tag].current_window == window) return;
   if (tags[current_tag].current_window && window) {
-    AddTransparency(window->hwnd);
     HWND temp = window->hwnd;
     window->hwnd = tags[current_tag].current_window->hwnd;
     tags[current_tag].current_window->hwnd = temp;
@@ -288,7 +248,6 @@ void FocusCurrent()
       ClipCursor(&window);
       SetCursorPos(window.left + (window.right - window.left) / 2, window.top + (window.bottom - window.top) / 2);
     }
-    RemoveTransparency(current->hwnd);
   }
 }
 
@@ -503,11 +462,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         for (tag=0; tag<TAGS; tag++) {
           nodes = tags[tag].nodes;
-          for (current = nodes; current;) { // Add window borders, reset opacity and remove
+          for (current = nodes; current;) {
             node *temp = NULL;
             ShowWindow(current->hwnd, SW_RESTORE);
-            AddBorder(current->hwnd);
-            RemoveTransparency(current->hwnd);
             temp = current->next;
             free(current);
             current = temp;
@@ -534,14 +491,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
       {
         case KEY_SELECT_UP:
           if (current) {
-            AddTransparency(current->hwnd);
             tags[current_tag].current_window = GetNextNode();
             FocusCurrent();
           }
           break;
         case KEY_SELECT_DOWN:
           if (current) {
-            AddTransparency(current->hwnd);
             tags[current_tag].current_window = GetPreviousNode();
             FocusCurrent();
           }
@@ -652,9 +607,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             {
               node *found = FindNode((HWND)lParam, current_tag);
               if (found) {
-                if (current) {
-                  AddTransparency(current->hwnd);
-                }
                 current = found;
                 FocusCurrent();
               }
@@ -706,10 +658,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (ignoreCount < MAX_IGNORE) {
           sprintf(ignoreClasses[ignoreCount++], "%s", nextarg);
         }
-      } else if (!strcmp(arg, "-bi")) {
-        if (ignoreCountBorders < MAX_IGNORE) {
-          sprintf(ignoreClassesBorders[ignoreCountBorders++], "%s", nextarg);
-        }
+      } else if (!strcmp(arg, "-a")) {
       } else if (!strcmp(arg, "-m")) {
         modkeys = 0;
         int y;
@@ -750,8 +699,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
       lockMouse = 1;
     } else if (!strcmp(arg, "-x")) {
       experimental_mouse = 1;
-    } else if (!strcmp(arg, "-b")) {
-      borders = 0;
     }
   }
 
