@@ -2,7 +2,7 @@
  * vim: ts=8 noexpandtab sw=8 :
  *	HashTWM
  *	An automatic Tiling Window Manager for XP/Vista in spirit of dwm
- *	Copyright 2008-2009, Zane Ashby, http://demonastery.org
+ *	Copyright 2008-2013, Zane Ashby, http://www.zaneashby.com
  */
 
 /*
@@ -16,10 +16,8 @@
  * 	Rethink using a Keyboard hook, emacs style maps could be neat
  */
 
-#define NAME			"HashTWM" 	/* Used for Window Name/Class */
-#define VERSION			"HashTWM 0.9Beta" 	/* Used for Version Box - Wait there isn't one, oh well */
-
-//#define REMOTE // Not finished, but half working
+#define NAME			"HashTWM"
+#define VERSION			"HashTWM 1.0"
 
 /* Windows defines and includes */
 #define WIN32_LEAN_AND_MEAN
@@ -30,8 +28,8 @@
 #include <shellapi.h> 	/* For CommandLineToArgvW */
 
 #define DEFAULT_MODKEY 		MOD_CONTROL | MOD_ALT
-#define MAX_IGNORE 		16 	/* Allows 16 window classes to be ignored */
-#define DEFAULT_TILING_MODE	0 	/* Vertical tiling is the default */
+#define MAX_IGNORE 		16
+#define DEFAULT_TILING_MODE	MODE_VERTICAL
 #define TAGS			9
 
 /* Controls */
@@ -57,6 +55,14 @@ enum controls {
 	KEY_TOGGLE_T1=200
 };
 
+/* Tiling Modes */
+enum tiling_modes {
+	MODE_VERTICAL = 0,
+	MODE_HORIZONTAL,
+	MODE_GRID,
+	MODE_FULLSCREEN
+};
+
 /* Node */
 typedef struct
 {
@@ -71,7 +77,6 @@ typedef struct
 	node* nodes;
 	node* last_node;
 	node* current_window;
-	/* Tiling modes: 0=Vertical, 1=Horizontal, 2=Grid, 3=Fullscreen */
 	unsigned short tilingMode;
 	/* Xmonad style Master area count */
 	unsigned short masterarea_count;
@@ -387,7 +392,7 @@ void ArrangeWindows()
 			switch (tags[current_tag].tilingMode)
 			{
 				default:
-				case 0: 	/* Vertical */
+				case MODE_VERTICAL:
 					{
 						if (i < masterarea_count) {
 							x = 0;
@@ -402,7 +407,7 @@ void ArrangeWindows()
 						}
 					}
 					break;
-				case 1: 	/* Horizontal */
+				case MODE_HORIZONTAL:
 					{
 						if (i < masterarea_count) {
 							/* Main window */
@@ -419,7 +424,7 @@ void ArrangeWindows()
 						}
 					}
 					break;
-				case 2: 	/* Grid - See dvtm-license.txt */
+				case MODE_GRID: /* See dvtm-license.txt */
 					{
 						int ah, aw, rows, cols;
 						for (cols = 0; cols <= (a + 1)/2; cols++) {
@@ -445,7 +450,7 @@ void ArrangeWindows()
 						height += ah;
 					}
 					break;
-				case 3: 	/* Fullscreen - This could probably be changed to work better */
+				case MODE_FULLSCREEN:
 					x = 0;
 					y = 0;
 					width = screen_width;
