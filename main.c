@@ -52,6 +52,11 @@ enum tiling_modes {
   MODE_FULLSCREEN
 };
 
+// Timer modes
+enum timer_modes {
+  TIMER_UPDATE_MOUSE = 0
+};
+
 // Node, for linked-list
 typedef struct
 {
@@ -484,20 +489,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
   switch (msg)
   {
     case WM_CREATE:
-      SetTimer(hwnd, 1, 60000, NULL); // Trim memory once a minute
       if (experimental_mouse) {
-        SetTimer(hwnd, 2, 500, NULL); // Poll for mouse position
+        SetTimer(hwnd, TIMER_UPDATE_MOUSE, 500, NULL); // Poll for mouse position
       }
-      SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1); // Trim memory now
       break;
     case WM_CLOSE:
       {
         ClipCursor(0); // Release Cursor Lock
         DeregisterShellHookWindow(hwnd);
         UnregisterHotkeys(hwnd);
-        KillTimer(hwnd, 1); // Memory Trim Timer
         if (experimental_mouse) {
-          KillTimer(hwnd, 2); 	/* Mouse Poll Timer */
+          KillTimer(hwnd, TIMER_UPDATE_MOUSE); // Mouse Poll Timer
         }
         for (tag=0; tag<TAGS; tag++) {
           nodes = tags[tag].nodes;
@@ -625,10 +627,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
       switch (wParam)
       {
-        case 1:
-          SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
-          break;
-        case 2:
+        case TIMER_UPDATE_MOUSE:
           UpdateMousePos(hwnd);
           break;
       }
