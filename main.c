@@ -5,21 +5,21 @@
 // Copyright 2008-2013, Zane Ashby, http://www.zaneashby.com
 //
 
-#define NAME			"HashTWM"
-#define VERSION			"HashTWM 1.0"
+#define NAME      "HashTWM"
+#define VERSION   "HashTWM 1.0"
 
 // Windows defines and includes
 #define WIN32_LEAN_AND_MEAN
-#define _WIN32_WINNT		0x0500
+#define _WIN32_WINNT 0x0500
 #include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <shellapi.h> // For CommandLineToArgvW
 
-#define DEFAULT_MODKEY 		MOD_CONTROL | MOD_ALT
-#define MAX_IGNORE 		16
-#define DEFAULT_TILING_MODE	MODE_VERTICAL
-#define TAGS			9
+#define DEFAULT_MODKEY        MOD_CONTROL | MOD_ALT
+#define MAX_IGNORE            16
+#define DEFAULT_TILING_MODE   MODE_VERTICAL
+#define TAGS                  9
 
 // Keyboard controls
 enum controls {
@@ -40,8 +40,8 @@ enum controls {
   KEY_INC_AREA,
   KEY_DEC_AREA,
   KEY_CLOSE_WIN,
-  KEY_SWITCH_T1=100,
-  KEY_TOGGLE_T1=200
+  KEY_SWITCH_T1 = 100,
+  KEY_TOGGLE_T1 = 200
 };
 
 // Tiling modes
@@ -702,8 +702,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
   }
 
-  /* Initialize tags */
-  for (i=0; i<TAGS; i++) {
+  // Initialize tags
+  for (i = 0; i < TAGS; i++) {
     tags[i].nodes = NULL;
     tags[i].last_node = NULL;
     tags[i].current_window = NULL;
