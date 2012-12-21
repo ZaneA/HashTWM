@@ -6,7 +6,7 @@ A dwm-like automatic tiling window manager for Microsoft Windows, download at ht
 Usage
 ---
 
-Run HashTWM.exe.
+Run `HashTWM.exe`.
 All windows on screen will automatically be tiled in a vertical layout, similar to dwm in the Linux world.
 You should be able to combine a Virtual Desktop manager with multiple instances of HashTWM (with different mod keys) for workspace like support.
 Beware this is alpha software, so your milage may vary.
@@ -22,7 +22,7 @@ Key bindings (By default mod is Ctrl + Alt)
     Mod + z/x - Increase/Decrease number of windows in main area
     Mod + c - Close foreground window
     Mod + Space - Switch between tiling modes, Vertical/Horizontal stack, Grid, and Fullscreen
-    Mod + y - Display foreground window class (For use with -i parameter)
+    Mod + y - Display foreground window class (For use with -i or -a parameters)
     Mod + u - Toggle lock cursor mode. In this mode cursor is locked inside the active window
     Mod + i - Toggle ignore mode. If ignore is on then new windows will not be tiled but will appear as normal
     Mod + o - Force Tile Foreground window
@@ -58,13 +58,18 @@ Command Line Options:
 If display positions aren't specified on the command line then the workspace area is used instead.
 
 
-Example shortcuts, (for two displays):
+Example shortcuts (for two displays):
 
-Left: HashTWM.exe -x -left -1024 -top 0 -width 1024 -height 768 -i iTunes -i ConsoleWindowClass -i #32770
+Left: `HashTWM.exe -x -left -1024 -top 0 -width 1024 -height 768 -i iTunes -i ConsoleWindowClass -i #32770`
 
-Right: HashTWM.exe -x -left 0 -top 0 -width 1024 -height 768 -i iTunes -i ConsoleWindowClass -i #32770
+Right: `HashTWM.exe -x -left 0 -top 0 -width 1024 -height 768 -i iTunes -i ConsoleWindowClass -i #32770`
 
-A useful class to ignore is "#32770" which will ignore all message boxes.
+A useful class to ignore is `#32770` which will ignore all message boxes.
+
+My usage is the following (tile only MinTTY and Vim windows):
+
+    HashTWM.exe -a mintty -a Vim
+
 
 Quirks
 ---
