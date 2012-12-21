@@ -37,8 +37,8 @@ Command Line Options:
     -v		Display Version and exit
     -l		Enable mouse lock by default
     -o [opacity]	Set non active windows to [opacity], 0 being fully transparent and 255 being fully opaque
-    -i [class]	Add window class [class] to ignore list
-    -bi [class]	Add window class [class] to border removal ignore list
+    -i [class]	Add window class [class] to ignore list (blacklist)
+    -a [class]	Add window class [class] to include list (whitelist)
     -m [mod]	Change the modifier key, eg. -m ws will set modifier to Win + Shift, you can combine the following:
         c - Control
         a - Alt
@@ -54,7 +54,6 @@ Command Line Options:
     -width	[pos]	Width of display, eg. 1024
     -height [pos]	Height of Display, eg. 768
     -x		Enable experimental mouse polling for activating hotkeys based on mouse position
-    -b		Reverse the behavior of -bi (Only classes specified have borders removed)
 
 If display positions aren't specified on the command line then the workspace area is used instead.
 
@@ -70,10 +69,8 @@ A useful class to ignore is "#32770" which will ignore all message boxes.
 Quirks
 ---
 
-If HashTWM appears to freeze with 100% CPU this is almost definately a bug in the handling of linked lists. Open an issue and I'll look into it.
-
 If experimental mouse polling isn't enabled then you will need to set different mod keys for each instance of HashTWM.
 
-All Windows should be restored (ie. not minimized) before HashTWM is started. Otherwise, these windows will be taken into account in the tiling arrangement, but will stay minimized.
+All open windows will be restored (un-minimized) when HashTWM is started.
 
 Grid mode doesn't quite work right, last window isn't always tiled correctly, likely a mistake in my port. Other than that it works great.
