@@ -90,6 +90,7 @@ unsigned short ignoreCount = 0;
 int modkeys = DEFAULT_MODKEY;
 char ignoreClasses[MAX_IGNORE][128]; // Exclude tiling from the classes in here
 char includeClasses[MAX_IGNORE][128]; // Only tile the classes in here
+unsigned short includeCount = 0;
 unsigned short include_mode = 0; // Exclude by default
 
 // Shell hook stuff
@@ -102,7 +103,7 @@ int IsInList(char **list, unsigned int length, HWND hwnd) {
   GetClassName(hwnd, temp, 128);
   int i;
   for (i = 0; i < length; i++) {
-    if (!strcmp(temp, list[i])) { return TRUE; }
+    if (!strcmp(temp, list[i])) { free(temp); return TRUE; }
   }
   free(temp);
   return FALSE;
@@ -118,8 +119,17 @@ int IsGoodWindow(HWND hwnd)
       LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
       GetClassName(hwnd, temp, 128);
       int i;
-      for (i = 0; i < MAX_IGNORE; i++) {
-        if (!strcmp(temp, ignoreClasses[i])) { return FALSE; }
+      if (include_mode == 1) {
+        for (i = 0; i < MAX_IGNORE; i++) {
+          if (!strcmp(temp, includeClasses[i])) { free(temp); return TRUE; }
+        }
+
+        free(temp);
+        return FALSE;
+      } else {
+        for (i = 0; i < MAX_IGNORE; i++) {
+          if (!strcmp(temp, ignoreClasses[i])) { free(temp); return FALSE; }
+        }
       }
       free(temp);
       return TRUE;
@@ -659,6 +669,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
           sprintf(ignoreClasses[ignoreCount++], "%s", nextarg);
         }
       } else if (!strcmp(arg, "-a")) {
+        include_mode = 1; // Include mode instead of exclude
+        if (includeCount < MAX_IGNORE) {
+          sprintf(includeClasses[includeCount++], "%s", nextarg);
+        }
       } else if (!strcmp(arg, "-m")) {
         modkeys = 0;
         int y;
