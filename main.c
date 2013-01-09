@@ -617,7 +617,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             {
               node *found = FindNode((HWND)lParam, current_tag);
               if (found) {
-                current = found;
+                tags[current_tag].current_window = current = found;
                 FocusCurrent();
               }
             }
