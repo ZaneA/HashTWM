@@ -225,15 +225,6 @@ void FullRemoveNode(HWND hwnd)
     RemoveNode(hwnd, tag);
 }
 
-void ToggleTag(unsigned short tag) {
-  HWND hwnd = GetForegroundWindow();
-
-  if (FindNode(hwnd, tag))
-    RemoveNode(hwnd, tag);
-  else
-    AddNode(hwnd, tag);
-}
-
 void SwapWindowWithNode(node *window)
 {
 
@@ -393,6 +384,19 @@ void ArrangeWindows()
     i++;
   }
   FocusCurrent();
+}
+
+void ToggleTag(unsigned short tag) {
+  HWND hwnd = GetForegroundWindow();
+
+  if (FindNode(hwnd, tag)) {
+    RemoveNode(hwnd, tag);
+    ShowWindow(hwnd, SW_MINIMIZE);
+  } else {
+    AddNode(hwnd, tag);
+  }
+
+  ArrangeWindows();
 }
 
 void RegisterHotkeys(HWND hwnd)
