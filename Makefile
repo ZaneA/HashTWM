@@ -1,4 +1,4 @@
-CFLAGS=-mwindows -s -c -Wall
+CFLAGS=-c -Wall
 EXECUTABLE=hashtwm.exe
 SOURCES=main.c
 OBJECTS=$(SOURCES:.c=.o)
@@ -6,7 +6,7 @@ OBJECTS=$(SOURCES:.c=.o)
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $@
+	$(CC) -s -Wl,--subsystem,windows $(OBJECTS) -o $@
 
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@
