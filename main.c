@@ -92,6 +92,7 @@ char ignoreClasses[MAX_IGNORE][128]; // Exclude tiling from the classes in here
 char includeClasses[MAX_IGNORE][128]; // Only tile the classes in here
 unsigned short includeCount = 0;
 unsigned short include_mode = 0; // Exclude by default
+unsigned short one_tag_per_window = 0; // If 1, remove current tag when adding a new one
 
 // Shell hook stuff
 typedef BOOL (*RegisterShellHookWindowProc) (HWND);
@@ -394,6 +395,11 @@ void ToggleTag(unsigned short tag) {
     ShowWindow(hwnd, SW_MINIMIZE);
   } else {
     AddNode(hwnd, tag);
+
+    if (one_tag_per_window) {
+      RemoveNode(hwnd, current_tag);
+      ShowWindow(hwnd, SW_MINIMIZE);
+    }
   }
 
   ArrangeWindows();
@@ -717,6 +723,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
       lockMouse = 1;
     } else if (!strcmp(arg, "-x")) {
       experimental_mouse = 1;
+    } else if (!strcmp(arg, "--one-tag")) {
+      one_tag_per_window = 1;
     }
   }
 

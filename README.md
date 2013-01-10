@@ -36,7 +36,6 @@ Command Line Options:
 
     -v		Display Version and exit
     -l		Enable mouse lock by default
-    -o [opacity]	Set non active windows to [opacity], 0 being fully transparent and 255 being fully opaque
     -i [class]	Add window class [class] to ignore list (blacklist)
     -a [class]	Add window class [class] to include list (whitelist)
     -m [mod]	Change the modifier key, eg. -m ws will set modifier to Win + Shift, you can combine the following:
@@ -54,6 +53,7 @@ Command Line Options:
     -width	[pos]	Width of display, eg. 1024
     -height [pos]	Height of Display, eg. 768
     -x		Enable experimental mouse polling for activating hotkeys based on mouse position
+    --one-tag  When tagging windows, move window instead of toggling it
 
 If display positions aren't specified on the command line then the workspace area is used instead.
 
