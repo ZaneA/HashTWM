@@ -1,6 +1,7 @@
 CFLAGS=-c -Wall
 EXECUTABLE=hashtwm.exe
-SOURCES=main.c
+SOURCE_DIR=src
+SOURCES=$(SOURCE_DIR)/main.c
 OBJECTS=$(SOURCES:.c=.o)
 
 all: $(EXECUTABLE)
