@@ -173,21 +173,21 @@ void AddNode(HWND hwnd, unsigned short tag)
 
   if (FindNode(hwnd, tag)) return;
 
-  node *new = (node*)malloc(sizeof(node));
-  new->hwnd = hwnd;
-  new->prev = NULL;
-  new->next = NULL;
+  new_node = (node*)malloc(sizeof(node));
+  new_node->hwnd = hwnd;
+  new_node->prev = NULL;
+  new_node->next = NULL;
 
   if (tags[tag].nodes == NULL) {
-    new->prev = new;
-    tags[tag].nodes = new;
-    tags[tag].current_window = new;
-    tags[tag].last_node = new;
+    new_node->prev = new_node;
+    tags[tag].nodes = new_node;
+    tags[tag].current_window = new_node;
+    tags[tag].last_node = new_node;
   } else {
-    tags[tag].last_node->next = new;
-    new->prev = tags[tag].last_node;
-    tags[tag].last_node = new;
-    tags[tag].nodes->prev = new;
+    tags[tag].last_node->next = new_node;
+    new_node->prev = tags[tag].last_node;
+    tags[tag].last_node = new_node;
+    tags[tag].nodes->prev = new_node;
   }
 }
 
