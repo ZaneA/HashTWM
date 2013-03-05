@@ -100,9 +100,9 @@ RegisterShellHookWindowProc RegisterShellHookWindow;
 UINT shellhookid; // Window Message id
 
 int IsInList(char **list, unsigned int length, HWND hwnd) {
+  int i;
   LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128); // I don't like this, but it works
   GetClassName(hwnd, temp, 128);
-  int i;
   for (i = 0; i < length; i++) {
     if (!strcmp(temp, list[i])) { free(temp); return TRUE; }
   }
@@ -117,9 +117,9 @@ int IsGoodWindow(HWND hwnd)
     int exstyle = GetWindowLong(hwnd, GWL_EXSTYLE);
     HWND owner = GetWindow(hwnd, GW_OWNER);
     if ((((exstyle & WS_EX_TOOLWINDOW) == 0) && (owner == 0)) || ((exstyle & WS_EX_APPWINDOW) && (owner != 0))) {
+      int i;
       LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
       GetClassName(hwnd, temp, 128);
-      int i;
       if (include_mode == 1) {
         for (i = 0; i < MAX_IGNORE; i++) {
           if (!strcmp(temp, includeClasses[i])) { free(temp); return TRUE; }
@@ -169,6 +169,8 @@ node* FullFindNode(HWND hwnd)
 
 void AddNode(HWND hwnd, unsigned short tag)
 {
+  node *new_node;
+
   if (FindNode(hwnd, tag)) return;
 
   node *new = (node*)malloc(sizeof(node));
@@ -295,13 +297,13 @@ void ArrangeWindows()
 {
   int a, i, x, y, width, height;
   unsigned short masterarea_count;
+  node *nodes;
+  node *temp;
 
   a = CountNodes();
   if (a == -1) return;
   i = 0;
 
-  node *nodes;
-  node *temp;
   nodes = tags[current_tag].nodes;
   masterarea_count = tags[current_tag].masterarea_count;
   for (temp = nodes; temp; temp = temp->next) {
@@ -407,6 +409,9 @@ void ToggleTag(unsigned short tag) {
 
 void RegisterHotkeys(HWND hwnd)
 {
+  char key[2];
+  int i;
+
   RegisterHotKey(hwnd, KEY_SELECT_UP, modkeys, 'K');
   RegisterHotKey(hwnd, KEY_SELECT_DOWN, modkeys, 'J');
   RegisterHotKey(hwnd, KEY_MOVE_MAIN, modkeys, VK_RETURN);
@@ -426,8 +431,6 @@ void RegisterHotkeys(HWND hwnd)
   RegisterHotKey(hwnd, KEY_CLOSE_WIN, modkeys, 'C');
 
   // Tags
-  char key[2];
-  int i;
   for (i = 0; i < TAGS; i++) {
     sprintf(key, "%d", i + 1);
     RegisterHotKey(hwnd, KEY_SWITCH_T1 + i, modkeys, *key); // Switch to tag N
@@ -684,8 +687,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
           sprintf(includeClasses[includeCount++], "%s", nextarg);
         }
       } else if (!strcmp(arg, "-m")) {
-        modkeys = 0;
         int y;
+        modkeys = 0;
         for (y = 0; y < strlen(nextarg); y++) {
           switch (nextarg[y])
           {
