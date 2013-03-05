@@ -95,9 +95,8 @@ unsigned short include_mode = 0; // Exclude by default
 unsigned short one_tag_per_window = 0; // If 1, remove current tag when adding a new one
 
 // Shell hook stuff
-typedef BOOL (*RegisterShellHookWindowProc) (HWND);
-RegisterShellHookWindowProc RegisterShellHookWindow;
 UINT shellhookid; // Window Message id
+BOOL (__stdcall *RegisterShellHookWindow_)(HWND) = NULL; // RegisterShellHookWindow function. For compatibillity we get it out of the dll though it is in the headers now
 
 int IsInList(char **list, unsigned int length, HWND hwnd) {
   int i;
@@ -785,12 +784,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   ArrangeWindows();
 
   // Get function pointer for RegisterShellHookWindow
-  RegisterShellHookWindow = (RegisterShellHookWindowProc)GetProcAddress(GetModuleHandle("USER32.DLL"), "RegisterShellHookWindow");
-  if (RegisterShellHookWindow == NULL) {
-    MessageBox(NULL, "Could not find RegisterShellHookWindow", "Error", MB_OK | MB_ICONERROR);
-    return 0;
+  if ( RegisterShellHookWindow_ == NULL )
+  {
+    RegisterShellHookWindow_ = (BOOL (__stdcall *)(HWND))GetProcAddress(GetModuleHandle("USER32.DLL"), "RegisterShellHookWindow");
+    if (RegisterShellHookWindow_ == NULL) {
+      MessageBox(NULL, "Could not find RegisterShellHookWindow", "Error", MB_OK | MB_ICONERROR);
+      return 0;
+    }
   }
-  RegisterShellHookWindow(hwnd);
+
+  RegisterShellHookWindow_(hwnd);
   shellhookid = RegisterWindowMessage("SHELLHOOK"); // Grab a dynamic id for the SHELLHOOK message to be used later
 
   while (GetMessage(&msg, NULL, 0, 0) > 0)
