@@ -257,7 +257,7 @@ void FocusCurrent()
 // Returns the previous Node with the same tag as current
 node* GetPreviousNode()
 {
-  return tags[current_tag].current_window->prev;
+  return (node*)(tags[current_tag].current_window->prev);
 }
 
 // Returns the next Node with the same tag as current
@@ -266,7 +266,7 @@ node* GetNextNode()
   tag *thistag = &tags[current_tag];
 
   if (thistag->current_window && thistag->current_window->next)
-    return thistag->current_window->next;
+    return (node*)(thistag->current_window->next);
   else
     return thistag->nodes;
 }
