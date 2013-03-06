@@ -95,14 +95,13 @@ unsigned short include_mode = 0; // Exclude by default
 unsigned short one_tag_per_window = 0; // If 1, remove current tag when adding a new one
 
 // Shell hook stuff
-typedef BOOL (*RegisterShellHookWindowProc) (HWND);
-RegisterShellHookWindowProc RegisterShellHookWindow;
 UINT shellhookid; // Window Message id
+BOOL (__stdcall *RegisterShellHookWindow_)(HWND) = NULL; // RegisterShellHookWindow function. For compatibillity we get it out of the dll though it is in the headers now
 
 int IsInList(char **list, unsigned int length, HWND hwnd) {
+  int i;
   LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128); // I don't like this, but it works
   GetClassName(hwnd, temp, 128);
-  int i;
   for (i = 0; i < length; i++) {
     if (!strcmp(temp, list[i])) { free(temp); return TRUE; }
   }
@@ -117,9 +116,9 @@ int IsGoodWindow(HWND hwnd)
     int exstyle = GetWindowLong(hwnd, GWL_EXSTYLE);
     HWND owner = GetWindow(hwnd, GW_OWNER);
     if ((((exstyle & WS_EX_TOOLWINDOW) == 0) && (owner == 0)) || ((exstyle & WS_EX_APPWINDOW) && (owner != 0))) {
+      int i;
       LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
       GetClassName(hwnd, temp, 128);
-      int i;
       if (include_mode == 1) {
         for (i = 0; i < MAX_IGNORE; i++) {
           if (!strcmp(temp, includeClasses[i])) { free(temp); return TRUE; }
@@ -169,23 +168,25 @@ node* FullFindNode(HWND hwnd)
 
 void AddNode(HWND hwnd, unsigned short tag)
 {
+  node *new_node;
+
   if (FindNode(hwnd, tag)) return;
 
-  node *new = (node*)malloc(sizeof(node));
-  new->hwnd = hwnd;
-  new->prev = NULL;
-  new->next = NULL;
+  new_node = (node*)malloc(sizeof(node));
+  new_node->hwnd = hwnd;
+  new_node->prev = NULL;
+  new_node->next = NULL;
 
   if (tags[tag].nodes == NULL) {
-    new->prev = new;
-    tags[tag].nodes = new;
-    tags[tag].current_window = new;
-    tags[tag].last_node = new;
+    new_node->prev = new_node;
+    tags[tag].nodes = new_node;
+    tags[tag].current_window = new_node;
+    tags[tag].last_node = new_node;
   } else {
-    tags[tag].last_node->next = new;
-    new->prev = tags[tag].last_node;
-    tags[tag].last_node = new;
-    tags[tag].nodes->prev = new;
+    tags[tag].last_node->next = new_node;
+    new_node->prev = tags[tag].last_node;
+    tags[tag].last_node = new_node;
+    tags[tag].nodes->prev = new_node;
   }
 }
 
@@ -256,7 +257,7 @@ void FocusCurrent()
 // Returns the previous Node with the same tag as current
 node* GetPreviousNode()
 {
-  return tags[current_tag].current_window->prev;
+  return (node*)(tags[current_tag].current_window->prev);
 }
 
 // Returns the next Node with the same tag as current
@@ -265,7 +266,7 @@ node* GetNextNode()
   tag *thistag = &tags[current_tag];
 
   if (thistag->current_window && thistag->current_window->next)
-    return thistag->current_window->next;
+    return (node*)(thistag->current_window->next);
   else
     return thistag->nodes;
 }
@@ -295,13 +296,13 @@ void ArrangeWindows()
 {
   int a, i, x, y, width, height;
   unsigned short masterarea_count;
+  node *nodes;
+  node *temp;
 
   a = CountNodes();
   if (a == -1) return;
   i = 0;
 
-  node *nodes;
-  node *temp;
   nodes = tags[current_tag].nodes;
   masterarea_count = tags[current_tag].masterarea_count;
   for (temp = nodes; temp; temp = temp->next) {
@@ -407,6 +408,9 @@ void ToggleTag(unsigned short tag) {
 
 void RegisterHotkeys(HWND hwnd)
 {
+  char key[2];
+  int i;
+
   RegisterHotKey(hwnd, KEY_SELECT_UP, modkeys, 'K');
   RegisterHotKey(hwnd, KEY_SELECT_DOWN, modkeys, 'J');
   RegisterHotKey(hwnd, KEY_MOVE_MAIN, modkeys, VK_RETURN);
@@ -426,8 +430,6 @@ void RegisterHotkeys(HWND hwnd)
   RegisterHotKey(hwnd, KEY_CLOSE_WIN, modkeys, 'C');
 
   // Tags
-  char key[2];
-  int i;
   for (i = 0; i < TAGS; i++) {
     sprintf(key, "%d", i + 1);
     RegisterHotKey(hwnd, KEY_SWITCH_T1 + i, modkeys, *key); // Switch to tag N
@@ -684,8 +686,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
           sprintf(includeClasses[includeCount++], "%s", nextarg);
         }
       } else if (!strcmp(arg, "-m")) {
-        modkeys = 0;
         int y;
+        modkeys = 0;
         for (y = 0; y < strlen(nextarg); y++) {
           switch (nextarg[y])
           {
@@ -782,12 +784,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   ArrangeWindows();
 
   // Get function pointer for RegisterShellHookWindow
-  RegisterShellHookWindow = (RegisterShellHookWindowProc)GetProcAddress(GetModuleHandle("USER32.DLL"), "RegisterShellHookWindow");
-  if (RegisterShellHookWindow == NULL) {
-    MessageBox(NULL, "Could not find RegisterShellHookWindow", "Error", MB_OK | MB_ICONERROR);
-    return 0;
+  if ( RegisterShellHookWindow_ == NULL )
+  {
+    RegisterShellHookWindow_ = (BOOL (__stdcall *)(HWND))GetProcAddress(GetModuleHandle("USER32.DLL"), "RegisterShellHookWindow");
+    if (RegisterShellHookWindow_ == NULL) {
+      MessageBox(NULL, "Could not find RegisterShellHookWindow", "Error", MB_OK | MB_ICONERROR);
+      return 0;
+    }
   }
-  RegisterShellHookWindow(hwnd);
+
+  RegisterShellHookWindow_(hwnd);
   shellhookid = RegisterWindowMessage("SHELLHOOK"); // Grab a dynamic id for the SHELLHOOK message to be used later
 
   while (GetMessage(&msg, NULL, 0, 0) > 0)
