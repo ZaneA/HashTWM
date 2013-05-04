@@ -61,6 +61,7 @@ enum timer_modes {
 typedef struct
 {
   HWND hwnd; // Used as key
+  RECT rect; // Used for restoring window layout
   void* prev;
   void* next;
 } node;
@@ -187,6 +188,9 @@ void AddNode(HWND hwnd, unsigned short tag)
   new_node->prev = NULL;
   new_node->next = NULL;
 
+  // Save window layout
+  GetWindowRect(hwnd, &new_node->rect);
+
   if (tags[tag].nodes == NULL) {
     new_node->prev = new_node;
     tags[tag].nodes = new_node;
@@ -206,6 +210,14 @@ void RemoveNode(HWND hwnd, unsigned short tag)
   temp = FindNode(hwnd, tag);
 
   if (!temp) return;
+
+  // Restore window layout
+  SetWindowPos(hwnd, NULL,
+      temp->rect.left, // x
+      temp->rect.top,  // y
+      temp->rect.right - temp->rect.left, // width
+      temp->rect.bottom - temp->rect.top, // height
+      0);
 
   // Remove the only node
   if (tags[tag].nodes == tags[tag].last_node) {
@@ -510,11 +522,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         for (tag=0; tag<TAGS; tag++) {
           nodes = tags[tag].nodes;
           for (current = nodes; current;) {
-            node *temp = NULL;
+            node *next = current->next;
             ShowWindow(current->hwnd, SW_RESTORE);
-            temp = current->next;
-            free(current);
-            current = temp;
+            RemoveNode(current->hwnd, tag);
+            current = next;
           }
           DestroyWindow(hwnd);
         }
