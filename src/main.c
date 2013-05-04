@@ -120,6 +120,22 @@ int IsGoodWindow(HWND hwnd)
     int exstyle = GetWindowLong(hwnd, GWL_EXSTYLE);
     HWND owner = GetWindow(hwnd, GW_OWNER);
 
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+
+    // Check that window is within this screen.
+    if (screen_width > 0 && screen_height > 0) {
+      if (!((rect.left > screen_x || rect.right > screen_x) &&
+            (rect.left < screen_x + screen_width || rect.right < screen_x + screen_width))) {
+        return FALSE;
+      }
+
+      if (!((rect.top > screen_y || rect.bottom > screen_y) &&
+            (rect.top < screen_y + screen_height || rect.bottom < screen_x + screen_height))) {
+        return FALSE;
+      }
+    }
+
     if ((((exstyle & WS_EX_TOOLWINDOW) == 0) && (owner == 0)) || ((exstyle & WS_EX_APPWINDOW) && (owner != 0))) {
       int i;
       LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
