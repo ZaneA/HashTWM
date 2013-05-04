@@ -102,10 +102,13 @@ int IsInList(char **list, unsigned int length, HWND hwnd) {
   int i;
   LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128); // I don't like this, but it works
   GetClassName(hwnd, temp, 128);
+
   for (i = 0; i < length; i++) {
     if (!strcmp(temp, list[i])) { free(temp); return TRUE; }
   }
+
   free(temp);
+
   return FALSE;
 }
 
@@ -115,10 +118,12 @@ int IsGoodWindow(HWND hwnd)
   if (!disableNext && !mouse_pos_out && IsWindowVisible(hwnd) && (GetParent(hwnd) == 0)) {
     int exstyle = GetWindowLong(hwnd, GWL_EXSTYLE);
     HWND owner = GetWindow(hwnd, GW_OWNER);
+
     if ((((exstyle & WS_EX_TOOLWINDOW) == 0) && (owner == 0)) || ((exstyle & WS_EX_APPWINDOW) && (owner != 0))) {
       int i;
       LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
       GetClassName(hwnd, temp, 128);
+
       if (include_mode == 1) {
         for (i = 0; i < MAX_IGNORE; i++) {
           if (!strcmp(temp, includeClasses[i])) { free(temp); return TRUE; }
@@ -131,6 +136,7 @@ int IsGoodWindow(HWND hwnd)
           if (!strcmp(temp, ignoreClasses[i])) { free(temp); return FALSE; }
         }
       }
+
       free(temp);
       return TRUE;
     }
@@ -147,11 +153,13 @@ node* FindNode(HWND hwnd, unsigned short tag)
 {
   node *temp;
   node *nodes = tags[tag].nodes;
+
   for (temp = nodes; temp; temp = temp->next) {
     if (temp->hwnd == hwnd) {
       return temp;
     }
   }
+
   return NULL;
 }
 
@@ -159,10 +167,12 @@ node* FullFindNode(HWND hwnd)
 {
   unsigned short tag;
   node *found;
+
   for (tag=0; tag<TAGS; tag++) {
     found = FindNode(hwnd, tag);
     if (found) return found;
   }
+
   return NULL;
 }
 
@@ -194,7 +204,9 @@ void RemoveNode(HWND hwnd, unsigned short tag)
 {
   node *temp;
   temp = FindNode(hwnd, tag);
+
   if (!temp) return;
+
   // Remove the only node
   if (tags[tag].nodes == tags[tag].last_node) {
     tags[tag].nodes = NULL;
@@ -214,15 +226,19 @@ void RemoveNode(HWND hwnd, unsigned short tag)
     ((node*)temp->prev)->next = temp->next;
     ((node*)temp->next)->prev = temp->prev;
   }
+
   if (tags[tag].current_window == temp)
     tags[tag].current_window = temp->prev;
+
   free(temp);
+
   return;
 }
 
 void FullRemoveNode(HWND hwnd)
 {
   unsigned short tag;
+
   for (tag=0; tag<TAGS; tag++)
     RemoveNode(hwnd, tag);
 }
@@ -245,6 +261,7 @@ void FocusCurrent()
 
   if (current) {
     SetForegroundWindow(current->hwnd);
+
     if (lockMouse) {
       RECT window;
       GetWindowRect(current->hwnd, &window);
@@ -276,10 +293,12 @@ int CountNodes()
 {
   node *temp;
   node *nodes = tags[current_tag].nodes;
+
   int i = 0;
   for (temp = nodes; temp; temp = temp->next) {
     i++;
   }
+
   return i - 1;
 }
 
@@ -305,8 +324,10 @@ void ArrangeWindows()
 
   nodes = tags[current_tag].nodes;
   masterarea_count = tags[current_tag].masterarea_count;
+
   for (temp = nodes; temp; temp = temp->next) {
     ShowWindow(temp->hwnd, SW_RESTORE);
+
     if (a == 0) { // I think this is universal to all tiling modes
       x = 0;
       y = 0;
@@ -382,9 +403,11 @@ void ArrangeWindows()
           break;
       }
     }
+
     SetWindowPos(temp->hwnd, HWND_TOP, x + screen_x, y + screen_y, width, height, SWP_SHOWWINDOW);
     i++;
   }
+
   FocusCurrent();
 }
 
@@ -447,6 +470,7 @@ void UpdateMousePos(HWND hwnd)
 {
   POINT cursor;
   GetCursorPos(&cursor);
+
   if ((cursor.x < screen_x) || (cursor.x > screen_x + screen_width) || (cursor.y < screen_y) || (cursor.y > screen_y + screen_height)) {
     if (mouse_pos_out == 0) {
       mouse_pos_out = 1;
@@ -474,6 +498,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         SetTimer(hwnd, TIMER_UPDATE_MOUSE, 500, NULL); // Poll for mouse position
       }
       break;
+
     case WM_CLOSE:
       {
         ClipCursor(0); // Release Cursor Lock
@@ -495,9 +520,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
       }
       break;
+
     case WM_DESTROY:
       PostQuitMessage(WM_QUIT);
       break;
+
     case WM_HOTKEY:
       if (wParam >= KEY_TOGGLE_T1 && wParam < (KEY_TOGGLE_T1 + TAGS)) {
         ToggleTag(wParam - KEY_TOGGLE_T1);
@@ -508,7 +535,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         ArrangeWindows();
         break;
       }
+
       current = tags[current_tag].current_window;
+
       switch (wParam)
       {
         case KEY_SELECT_UP:
@@ -517,27 +546,33 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             FocusCurrent();
           }
           break;
+
         case KEY_SELECT_DOWN:
           if (current) {
             tags[current_tag].current_window = GetPreviousNode();
             FocusCurrent();
           }
           break;
+
         case KEY_MOVE_MAIN:
           SwapWindowWithNode(tags[current_tag].nodes);
           ArrangeWindows();
           break;
+
         case KEY_EXIT:
           PostMessage(hwnd, WM_CLOSE, 0, 0);
           break;
+
         case KEY_MARGIN_LEFT:
           margin -= 20;
           ArrangeWindows();
           break;
+
         case KEY_MARGIN_RIGHT:
           margin += 20;
           ArrangeWindows();
           break;
+
         case KEY_IGNORE:
           if (!disableNext) {
             disableNext = 1;
@@ -545,6 +580,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             disableNext = 0;
           }
           break;
+
         case KEY_MOUSE_LOCK:
           if (lockMouse) {
             lockMouse = 0;
@@ -554,22 +590,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             FocusCurrent();
           }
           break;
+
         case KEY_TILING_MODE:
           tags[current_tag].tilingMode = (tags[current_tag].tilingMode + 1) % 3;
           ArrangeWindows();
           break;
+
         case KEY_MOVE_UP:
           if (current) {
             SwapWindowWithNode(GetNextNode());
             ArrangeWindows();
           }
           break;
+
         case KEY_MOVE_DOWN:
           if (current) {
             SwapWindowWithNode(GetPreviousNode());
             ArrangeWindows();
           }
           break;
+
         case KEY_DISP_CLASS:
           {
             LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
@@ -578,29 +618,35 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             free(temp);
           }
           break;
+
         case KEY_TILE:
           if (IsGoodWindow(GetForegroundWindow())) {
             AddNode(GetForegroundWindow(), current_tag);
             ArrangeWindows();
           }
           break;
+
         case KEY_UNTILE:
           FullRemoveNode(GetForegroundWindow());
           ArrangeWindows();
           break;
+
         case KEY_INC_AREA:
           tags[current_tag].masterarea_count++;
           ArrangeWindows();
           break;
+
         case KEY_DEC_AREA:
           tags[current_tag].masterarea_count--;
           ArrangeWindows();
           break;
+
         case KEY_CLOSE_WIN:
           PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0);
           break;
       }
       break;
+
     case WM_TIMER:
       switch (wParam)
       {
@@ -609,6 +655,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
           break;
       }
       break;
+
     default:
       if (msg == shellhookid) { // Handle the Shell Hook message
         switch (wParam)
@@ -620,11 +667,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
               FocusCurrent();
             }
             break;
+
           case HSHELL_WINDOWDESTROYED:
             FullRemoveNode((HWND)lParam);
             ArrangeWindows();
             FocusCurrent();
             break;
+
           case HSHELL_WINDOWACTIVATED:
             {
               node *found = FindNode((HWND)lParam, current_tag);
@@ -668,12 +717,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   unsigned short tilingMode;
 
   argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+
   for (i = 0; i < argc; i++) {
     char arg[128];
     wsprintfA(arg, "%S", argv[i]);
+
     if (i < (argc - 1)) {
       char nextarg[128];
       wsprintfA(nextarg, "%S", argv[i + 1]);
+
       if (!strcmp(arg, "-o")) {
         alpha = atoi(nextarg);
       } else if (!strcmp(arg, "-i")) {
@@ -682,12 +734,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
       } else if (!strcmp(arg, "-a")) {
         include_mode = 1; // Include mode instead of exclude
+
         if (includeCount < MAX_IGNORE) {
           sprintf(includeClasses[includeCount++], "%s", nextarg);
         }
       } else if (!strcmp(arg, "-m")) {
         int y;
         modkeys = 0;
+
         for (y = 0; y < strlen(nextarg); y++) {
           switch (nextarg[y])
           {
