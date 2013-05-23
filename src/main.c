@@ -330,12 +330,28 @@ int CountNodes()
   return i - 1;
 }
 
+void MinimizeWindow(HWND hwnd)
+{
+  WINDOWPLACEMENT placement = { sizeof(WINDOWPLACEMENT) };
+  GetWindowPlacement(hwnd, &placement);
+  placement.showCmd = SW_SHOWMINIMIZED;
+  SetWindowPlacement(hwnd, &placement);
+}
+
+void RestoreWindow(HWND hwnd)
+{
+  WINDOWPLACEMENT placement = { sizeof(WINDOWPLACEMENT) };
+  GetWindowPlacement(hwnd, &placement);
+  placement.showCmd = SW_RESTORE;
+  SetWindowPlacement(hwnd, &placement);
+}
+
 // Minimizes all the windows with the specified tag
 void MinimizeTag(unsigned short tag)
 {
   node *temp;
   for (temp=tags[tag].nodes; temp; temp = temp->next)
-    ShowWindow(temp->hwnd, SW_MINIMIZE);
+    MinimizeWindow(temp->hwnd);
 }
 
 // This does the actual tiling
@@ -354,7 +370,7 @@ void ArrangeWindows()
   masterarea_count = tags[current_tag].masterarea_count;
 
   for (temp = nodes; temp; temp = temp->next) {
-    ShowWindow(temp->hwnd, SW_RESTORE);
+    RestoreWindow(temp->hwnd);
 
     if (a == 0) { // I think this is universal to all tiling modes
       x = 0;
@@ -444,13 +460,13 @@ void ToggleTag(unsigned short tag) {
 
   if (FindNode(hwnd, tag)) {
     RemoveNode(hwnd, tag);
-    ShowWindow(hwnd, SW_MINIMIZE);
+    MinimizeWindow(hwnd);
   } else {
     AddNode(hwnd, tag);
 
     if (one_tag_per_window) {
       RemoveNode(hwnd, current_tag);
-      ShowWindow(hwnd, SW_MINIMIZE);
+      MinimizeWindow(hwnd);
     }
   }
 
@@ -539,7 +555,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
           nodes = tags[tag].nodes;
           for (current = nodes; current;) {
             node *next = current->next;
-            ShowWindow(current->hwnd, SW_RESTORE);
+            RestoreWindow(current->hwnd);
             RemoveNode(current->hwnd, tag);
             current = next;
           }
@@ -727,7 +743,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
 
 BOOL CALLBACK EnumWindowsRestore(HWND hwnd, LPARAM lParam)
 {
-  if (IsGoodWindow(hwnd)) { ShowWindow(hwnd, SW_RESTORE); }
+  if (IsGoodWindow(hwnd)) { RestoreWindow(hwnd); }
   return TRUE;
 }
 
