@@ -717,6 +717,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             FocusCurrent();
             break;
 
+          case HSHELL_RUDEAPPACTIVATED:
           case HSHELL_WINDOWACTIVATED:
             {
               node *found = FindNode((HWND)lParam, current_tag);
