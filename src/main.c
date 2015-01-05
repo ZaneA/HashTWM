@@ -758,7 +758,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   LPWSTR *argv = NULL;
   int argc;
   int i;
-  unsigned short tilingMode;
+  unsigned short tilingMode = DEFAULT_TILING_MODE;
 
   argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
@@ -833,7 +833,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     tags[i].nodes = NULL;
     tags[i].last_node = NULL;
     tags[i].current_window = NULL;
-    tags[i].tilingMode = DEFAULT_TILING_MODE;
+    tags[i].tilingMode = tilingMode;
     tags[i].masterarea_count = 1;
   }
 
