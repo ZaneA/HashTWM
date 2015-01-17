@@ -49,7 +49,9 @@ enum tiling_modes {
   MODE_VERTICAL = 0,
   MODE_HORIZONTAL,
   MODE_GRID,
-  MODE_FULLSCREEN
+  MODE_FULLSCREEN,
+  // Keep this at the end if adding tiling modes
+  MODE_END
 };
 
 // Timer modes
@@ -635,7 +637,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
           break;
 
         case KEY_TILING_MODE:
-          tags[current_tag].tilingMode = (tags[current_tag].tilingMode + 1) % 3;
+          tags[current_tag].tilingMode = (tags[current_tag].tilingMode + 1) % MODE_END;
           ArrangeWindows();
           break;
 
