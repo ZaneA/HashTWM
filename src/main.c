@@ -11,36 +11,46 @@
 #include "types.h"
 #include "driver.h"
 
-#define DEFAULT_MODKEY        MOD_CONTROL | MOD_ALT
+#include <stdlib.h>
+#include <stdio.h>
+
+#define DEFAULT_MODKEY        MODIFIER_SUPER
 #define MAX_IGNORE            16
 #define DEFAULT_TILING_MODE   MODE_VERTICAL
 #define TAGS                  9
 
 // Keyboard controls
-enum controls {
-    KEY_SELECT_UP = 1,
-    KEY_SELECT_DOWN,
-    KEY_MOVE_MAIN,
-    KEY_EXIT,
-    KEY_MARGIN_LEFT,
-    KEY_MARGIN_RIGHT,
-    KEY_IGNORE,
-    KEY_MOUSE_LOCK,
-    KEY_TILING_MODE,
-    KEY_MOVE_UP,
-    KEY_MOVE_DOWN,
-    KEY_DISP_CLASS,
-    KEY_TILE,
-    KEY_UNTILE,
-    KEY_INC_AREA,
-    KEY_DEC_AREA,
-    KEY_CLOSE_WIN,
-    KEY_SWITCH_T1 = 100,
-    KEY_TOGGLE_T1 = 200
+enum modifier_key_e {
+    MODIFIER_CTRL,
+    MODIFIER_ALT,
+    MODIFIER_SHIFT,
+    MODIFIER_SUPER
+};
+
+enum actions_e {
+    ACTION_SELECT_UP = 1,
+    ACTION_SELECT_DOWN,
+    ACTION_MOVE_MAIN,
+    ACTION_EXIT,
+    ACTION_MARGIN_LEFT,
+    ACTION_MARGIN_RIGHT,
+    ACTION_IGNORE,
+    ACTION_MOUSE_LOCK,
+    ACTION_TILING_MODE,
+    ACTION_MOVE_UP,
+    ACTION_MOVE_DOWN,
+    ACTION_DISP_CLASS,
+    ACTION_TILE,
+    ACTION_UNTILE,
+    ACTION_INC_AREA,
+    ACTION_DEC_AREA,
+    ACTION_CLOSE_WIN,
+    ACTION_SWITCH_T1 = 100,
+    ACTION_TOGGLE_T1 = 200
 };
 
 // Tiling modes
-enum tiling_modes {
+enum tiling_modes_e {
     MODE_VERTICAL = 0,
     MODE_HORIZONTAL,
     MODE_GRID,
@@ -50,23 +60,23 @@ enum tiling_modes {
 };
 
 // Timer modes
-enum timer_modes {
+enum timer_modes_e {
     TIMER_UPDATE_MOUSE = 0
 };
 
 // Tags / Workspaces
 typedef struct
 {
-    node_t* nodes; // List of nodes
-    node_t* last_node;
-    node_t* current_window;
+    node_t nodes; // List of nodes
+    node_t last_node;
+    node_t current_window;
     unsigned short tilingMode;
     // Xmonad style Master area count
     unsigned short masterarea_count;
-} tag;
+} tag_t;
 
 // Global variables
-tag g_tags[TAGS];
+tag_t g_tags[TAGS];
 unsigned short g_current_tag = 0;
 int g_screen_x, g_screen_y, g_screen_width, g_screen_height;
 unsigned short g_experimental_mouse = 0;
@@ -81,19 +91,20 @@ char g_ignore_classes[MAX_IGNORE][128]; // Exclude tiling from the classes in he
 char g_include_classes[MAX_IGNORE][128]; // Only tile the classes in here
 unsigned short g_include_count = 0;
 unsigned short g_include_mode = 0; // Exclude by default
-unsigned short g_one_tag_per_window = 0; // If 1, remove current tag when adding a new one
+unsigned short g_one_tag_per_window = 0; // If 1, remove current tag_t when adding a new one
 
-int util_is_in_list(char **list, unsigned int length, window_t window) {
-    int i;
-    string_t temp = driver_get_window_name(window, temp, 128);
+bool util_is_in_list(char **list, unsigned int length, window_t window) {
+    string_t temp = driver_get_window_name(window);
 
-    for (i = 0; i < length; i++) {
-        if (!strcmp(temp, list[i])) { free(temp); return TRUE; }
+    for (int i = 0; i < length; i++) {
+        if (!strcmp(temp, list[i])) {
+            free(temp); return true;
+        }
     }
 
     free(temp);
 
-    return FALSE;
+    return false;
 }
 
 
@@ -101,10 +112,10 @@ int util_is_in_list(char **list, unsigned int length, window_t window) {
 // Linked-list methods
 //
 
-node_t* find_node(window_t window, unsigned short tag)
+node_t find_node(window_t window, unsigned short tag_t)
 {
-    node_t *temp;
-    node_t *nodes = g_tags[tag].nodes;
+    node_t temp;
+    node_t nodes = g_tags[tag_t].nodes;
 
     for (temp = nodes; temp; temp = temp->next) {
         if (temp->window == window) {
@@ -115,26 +126,26 @@ node_t* find_node(window_t window, unsigned short tag)
     return NULL;
 }
 
-node_t* find_node_full(window_t window)
+node_t find_node_full(window_t window)
 {
-    unsigned short tag;
-    node_t *found;
+    unsigned short tag_t;
+    node_t found;
 
-    for (tag = 0; tag < TAGS; tag++) {
-        found = find_node(window, tag);
+    for (tag_t = 0; tag_t < TAGS; tag_t++) {
+        found = find_node(window, tag_t);
         if (found) return found;
     }
 
     return NULL;
 }
 
-void add_node(window_t window, unsigned short tag)
+void add_node(window_t window, unsigned short tag_t)
 {
-    node_t *new_node;
+    node_t new_node;
 
-    if (find_node(window, tag)) return;
+    if (find_node(window, tag_t)) return;
 
-    new_node = (node_t*)malloc(sizeof(node_t));
+    new_node = (node_t)malloc(sizeof(node_s));
     new_node->window = window;
     new_node->prev = NULL;
     new_node->next = NULL;
@@ -142,23 +153,23 @@ void add_node(window_t window, unsigned short tag)
     // Save window layout
     new_node->rect = driver_get_window_rect(window);
 
-    if (g_tags[tag].nodes == NULL) {
+    if (g_tags[tag_t].nodes == NULL) {
         new_node->prev = new_node;
-        g_tags[tag].nodes = new_node;
-        g_tags[tag].current_window = new_node;
-        g_tags[tag].last_node = new_node;
+        g_tags[tag_t].nodes = new_node;
+        g_tags[tag_t].current_window = new_node;
+        g_tags[tag_t].last_node = new_node;
     } else {
-        g_tags[tag].last_node->next = new_node;
-        new_node->prev = g_tags[tag].last_node;
-        g_tags[tag].last_node = new_node;
-        g_tags[tag].nodes->prev = new_node;
+        g_tags[tag_t].last_node->next = new_node;
+        new_node->prev = g_tags[tag_t].last_node;
+        g_tags[tag_t].last_node = new_node;
+        g_tags[tag_t].nodes->prev = new_node;
     }
 }
 
-void remove_node(window_t window, unsigned short tag)
+void remove_node(window_t window, unsigned short tag_t)
 {
-    node_t *temp;
-    temp = find_node(window, tag);
+    node_t temp;
+    temp = find_node(window, tag_t);
 
     if (!temp) return;
 
@@ -166,27 +177,27 @@ void remove_node(window_t window, unsigned short tag)
     driver_set_window_rect(window, temp->rect);
 
     // Remove the only node_t
-    if (g_tags[tag].nodes == g_tags[tag].last_node) {
-        g_tags[tag].nodes = NULL;
-        g_tags[tag].last_node = NULL;
-        g_tags[tag].current_window = NULL;
+    if (g_tags[tag_t].nodes == g_tags[tag_t].last_node) {
+        g_tags[tag_t].nodes = NULL;
+        g_tags[tag_t].last_node = NULL;
+        g_tags[tag_t].current_window = NULL;
         // Remove the first node_t
-    } else if (temp == g_tags[tag].nodes) {
-        g_tags[tag].nodes = temp->next;
-        g_tags[tag].nodes->prev = g_tags[tag].last_node;
+    } else if (temp == g_tags[tag_t].nodes) {
+        g_tags[tag_t].nodes = temp->next;
+        g_tags[tag_t].nodes->prev = g_tags[tag_t].last_node;
         // Remove the last node_t
-    } else if (temp == g_tags[tag].last_node) {
-        g_tags[tag].last_node = temp->prev;
-        g_tags[tag].nodes->prev = temp->prev;
-        g_tags[tag].last_node->next = NULL;
+    } else if (temp == g_tags[tag_t].last_node) {
+        g_tags[tag_t].last_node = temp->prev;
+        g_tags[tag_t].nodes->prev = temp->prev;
+        g_tags[tag_t].last_node->next = NULL;
         // Remove any other node_t
     } else {
-        ((node_t*)temp->prev)->next = temp->next;
-        ((node_t*)temp->next)->prev = temp->prev;
+        ((node_t)temp->prev)->next = temp->next;
+        ((node_t)temp->next)->prev = temp->prev;
     }
 
-    if (g_tags[tag].current_window == temp)
-    g_tags[tag].current_window = temp->prev;
+    if (g_tags[tag_t].current_window == temp)
+    g_tags[tag_t].current_window = temp->prev;
 
     free(temp);
 
@@ -195,10 +206,10 @@ void remove_node(window_t window, unsigned short tag)
 
 void remove_node_full(window_t window)
 {
-    unsigned short tag;
+    unsigned short tag_t;
 
-    for (tag=0; tag<TAGS; tag++) {
-        remove_node(window, tag);
+    for (tag_t=0; tag_t<TAGS; tag_t++) {
+        remove_node(window, tag_t);
     }
 }
 
@@ -216,7 +227,7 @@ node_t find_node_in_chain(node_t head, int idx) {
     return nd;
 }
 
-void swap_window_with_node(node_t *window)
+void swap_window_with_node(node_t window)
 {
 
     if (g_tags[g_current_tag].current_window == window) return;
@@ -241,42 +252,45 @@ void swap_window_with_first_non_master_window() {
 
 void focus_current()
 {
-    node_t *current = g_tags[g_current_tag].current_window;
+    node_t current = g_tags[g_current_tag].current_window;
 
     if (current) {
         driver_set_foreground_window(current->window);
 
         if (g_lock_mouse) {
-            rect_r window = driver_get_window_rect(current->window);
+            rect_t window = driver_get_window_rect(current->window);
             driver_set_cursor_rect(window);
-            driver_set_cursor_position(window.left + (window.right - window.left) / 2, window.top + (window.bottom - window.top) / 2);
+            pos_t p;
+            p.x = window.left + (window.right - window.left) / 2;
+            p.y = window.top + (window.bottom - window.top) / 2;
+            driver_set_cursor_position(p);
         }
     }
 }
 
-// Returns the previous node_t with the same tag as current
-node_t* get_previous_node()
+// Returns the previous node_t with the same tag_t as current
+node_t get_previous_node()
 {
-    return (node_t*)(g_tags[g_current_tag].current_window->prev);
+    return (node_t)(g_tags[g_current_tag].current_window->prev);
 }
 
-// Returns the next node_t with the same tag as current
-node_t* get_next_node()
+// Returns the next node_t with the same tag_t as current
+node_t get_next_node()
 {
-    tag *thistag = &g_tags[g_current_tag];
+    tag_t *thistag = &g_tags[g_current_tag];
 
     if (thistag->current_window && thistag->current_window->next) {
-        return (node_t*)(thistag->current_window->next);
+        return (node_t)(thistag->current_window->next);
     } else {
         return thistag->nodes;
     }
 }
 
-// Returns the number of Nodes with the same tag as current
+// Returns the number of Nodes with the same tag_t as current
 int count_nodes()
 {
-    node_t *temp;
-    node_t *nodes = g_tags[g_current_tag].nodes;
+    node_t temp;
+    node_t nodes = g_tags[g_current_tag].nodes;
 
     int i = 0;
     for (temp = nodes; temp; temp = temp->next) {
@@ -286,11 +300,11 @@ int count_nodes()
     return i - 1;
 }
 
-// Minimizes all the windows with the specified tag
-void minimize_tag(unsigned short tag)
+// Minimizes all the windows with the specified tag_t
+void minimize_tag(unsigned short tag_t)
 {
-    node_t *temp;
-    for (temp=g_tags[tag].nodes; temp; temp = temp->next)
+    node_t temp;
+    for (temp=g_tags[tag_t].nodes; temp; temp = temp->next)
     driver_set_window_visible(temp->window, false);
 }
 
@@ -299,17 +313,19 @@ void arrange_windows()
 {
     int a, i, x, y, width, height;
     unsigned short masterarea_count;
-    node_t *nodes;
-    node_t *temp;
+    node_t nodes;
+    node_t temp;
 
     a = count_nodes();
-    if (a == -1) return;
+    if (a == -1) {
+        return;
+    }
     i = 0;
 
     nodes = g_tags[g_current_tag].nodes;
     masterarea_count = g_tags[g_current_tag].masterarea_count;
 
-    for (temp = nodes; temp; temp = temp->next) {
+    for (temp = nodes; temp; temp = (node_t)temp->next) {
         driver_set_window_visible(temp->window, true);
 
         if (a == 0) { // I think this is universal to all tiling modes
@@ -390,7 +406,7 @@ void arrange_windows()
 
         //SetWindowPos(temp->window, HWND_TOP, x + g_screen_x, y + g_screen_y, width, height, SWP_SHOWWINDOW);
 
-        rect_r r;
+        rect_t r;
         r.left = x + g_screen_x;
         r.right = r.left + width;
         r.top = y + g_screen_y;
@@ -404,14 +420,14 @@ void arrange_windows()
     focus_current();
 }
 
-void toggle_tag(unsigned short tag) {
+void toggle_tag(unsigned short tag_t) {
     window_t window = driver_get_foreground_window();
 
-    if (find_node(window, tag)) {
-        remove_node(window, tag);
+    if (find_node(window, tag_t)) {
+        remove_node(window, tag_t);
         driver_set_window_visible(window, false);
     } else {
-        add_node(window, tag);
+        add_node(window, tag_t);
 
         if (g_one_tag_per_window) {
             remove_node(window, g_current_tag);
@@ -427,36 +443,37 @@ void register_hotkeys(window_t window)
     char key[2];
     int i;
 
-    driver_hotkey_add(window, KEY_SELECT_UP, g_modkeys, 'K');
-    driver_hotkey_add(window, KEY_SELECT_DOWN, g_modkeys, 'J');
-    driver_hotkey_add(window, KEY_MOVE_MAIN, g_modkeys, VK_RETURN);
-    driver_hotkey_add(window, KEY_EXIT, g_modkeys, VK_ESCAPE);
-    driver_hotkey_add(window, KEY_MARGIN_LEFT, g_modkeys, 'H');
-    driver_hotkey_add(window, KEY_MARGIN_RIGHT, g_modkeys, 'L');
-    driver_hotkey_add(window, KEY_IGNORE, g_modkeys, 'I');
-    driver_hotkey_add(window, KEY_MOUSE_LOCK, g_modkeys, 'U');
-    driver_hotkey_add(window, KEY_TILING_MODE, g_modkeys, VK_SPACE);
-    driver_hotkey_add(window, KEY_MOVE_UP, g_modkeys | MOD_SHIFT, 'K');
-    driver_hotkey_add(window, KEY_MOVE_DOWN, g_modkeys | MOD_SHIFT, 'J');
-    driver_hotkey_add(window, KEY_DISP_CLASS, g_modkeys, 'Y');
-    driver_hotkey_add(window, KEY_TILE, g_modkeys, 'O');
-    driver_hotkey_add(window, KEY_UNTILE, g_modkeys, 'P');
-    driver_hotkey_add(window, KEY_INC_AREA, g_modkeys, 'Z');
-    driver_hotkey_add(window, KEY_DEC_AREA, g_modkeys, 'X');
-    driver_hotkey_add(window, KEY_CLOSE_WIN, g_modkeys, 'C');
+    /*driver_hotkey_add(ACTION_SELECT_UP, g_modkeys, 'K');
+    driver_hotkey_add(ACTION_SELECT_DOWN, g_modkeys, 'J');
+    driver_hotkey_add(ACTION_MOVE_MAIN, g_modkeys, VK_RETURN);
+    driver_hotkey_add(ACTION_EXIT, g_modkeys, VK_ESCAPE);
+    driver_hotkey_add(ACTION_MARGIN_LEFT, g_modkeys, 'H');
+    driver_hotkey_add(ACTION_MARGIN_RIGHT, g_modkeys, 'L');
+    driver_hotkey_add(ACTION_IGNORE, g_modkeys, 'I');
+    driver_hotkey_add(ACTION_MOUSE_LOCK, g_modkeys, 'U');
+    driver_hotkey_add(ACTION_TILING_MODE, g_modkeys, VK_SPACE);
+    driver_hotkey_add(ACTION_MOVE_UP, g_modkeys | MODIFIER_SHIFT, 'K');
+    driver_hotkey_add(ACTION_MOVE_DOWN, g_modkeys | MODIFIER_SHIFT, 'J');
+    driver_hotkey_add(ACTION_DISP_CLASS, g_modkeys, 'Y');
+    driver_hotkey_add(ACTION_TILE, g_modkeys, 'O');
+    driver_hotkey_add(ACTION_UNTILE, g_modkeys, 'P');
+    driver_hotkey_add(ACTION_INC_AREA, g_modkeys, 'Z');
+    driver_hotkey_add(ACTION_DEC_AREA, g_modkeys, 'X');
+    driver_hotkey_add(ACTION_CLOSE_WIN, g_modkeys, 'C');*/
 
     // Tags
     for (i = 0; i < TAGS; i++) {
         sprintf(key, "%d", i + 1);
-        driver_hotkey_add(window, KEY_SWITCH_T1 + i, g_modkeys, *key); // Switch to tag N
-        driver_hotkey_add(window, KEY_TOGGLE_T1 + i, g_modkeys | MOD_SHIFT, *key); // Toggle tag N
+        //driver_hotkey_add(ACTION_SWITCH_T1 + i, g_modkeys, *key); // Switch to tag_t N
+        //driver_hotkey_add(ACTION_TOGGLE_T1 + i, g_modkeys | MODIFIER_SHIFT, *key); // Toggle tag_t N
     }
 }
 
 void unregister_hotkeys(window_t window)
 {
-    int i;
-    for (i = 1; i <= 27; i++) driver_hotkey_remove(window, i);
+    for (int i = 1; i <= 27; i++) {
+        //driver_hotkey_remove((hotkey_t)i);
+    }
 }
 
 void update_mouse_pos(window_t window)
@@ -471,7 +488,7 @@ void update_mouse_pos(window_t window)
     } else {
         if (g_mouse_pos_out == 1) {
             g_mouse_pos_out = 0;
-            Sleep(500);
+            //Sleep(500);
             register_hotkeys(window);
         }
     }
@@ -507,11 +524,11 @@ int main(int argc, char **argv) {
 
     for (i = 0; i < argc; i++) {
         char arg[128];
-        wsprintfA(arg, "%S", argv[i]);
+        sprintf(arg, "%s", argv[i]);
 
         if (i < (argc - 1)) {
             char nextarg[128];
-            wsprintfA(nextarg, "%S", argv[i + 1]);
+            sprintf(nextarg, "%s", argv[i + 1]);
 
             if (!strcmp(arg, "-o")) {
                 g_alpha = atoi(nextarg);
@@ -533,16 +550,16 @@ int main(int argc, char **argv) {
                     switch (nextarg[y])
                     {
                         case 'c':
-                        g_modkeys |= MOD_CONTROL;
+                        g_modkeys |= MODIFIER_CTRL;
                         break;
                         case 'a':
-                        g_modkeys |= MOD_ALT;
+                        g_modkeys |= MODIFIER_ALT;
                         break;
                         case 's':
-                        g_modkeys |= MOD_SHIFT;
+                        g_modkeys |= MODIFIER_SHIFT;
                         break;
                         case 'w':
-                        g_modkeys |= MOD_WIN;
+                        g_modkeys |= MODIFIER_SUPER;
                         break;
                     }
                 }
@@ -565,7 +582,7 @@ int main(int argc, char **argv) {
             g_lock_mouse = 1;
         } else if (!strcmp(arg, "-x")) {
             g_experimental_mouse = 1;
-        } else if (!strcmp(arg, "--one-tag")) {
+        } else if (!strcmp(arg, "--one-tag_t")) {
             g_one_tag_per_window = 1;
         }
     }
@@ -581,18 +598,18 @@ int main(int argc, char **argv) {
 
     // Screen options aren't being specified from the command line so set some defaults
     if (!g_screen_x && !g_screen_y && !g_screen_width && !g_screen_height) {
-        rect_r workarea = driver_get_screen_rect(NULL);
+        rect_t workarea = driver_get_screen_rect(NULL);
         g_screen_x = workarea.left;
         g_screen_y = workarea.top;
         g_screen_width = workarea.right - workarea.left;
         g_screen_height = workarea.bottom - workarea.top;
     }
 
-    register_hotkeys(window);
-    update_mouse_pos(window);
+    //register_hotkeys(window);
+    //update_mouse_pos(window);
 
-    driver_enumerate_windows(enum_windows_restore_proc);
-    driver_enumerate_windows(enum_windows_proc);
+    driver_enumerate_windows(enumerate_windows_restore_proc);
+    driver_enumerate_windows(enumerate_windows_add_proc);
 
     arrange_windows();
 

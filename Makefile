@@ -1,13 +1,18 @@
 CFLAGS=-c -Wall
-EXECUTABLE=hashtwm.exe
+#LDFLAGS=-s -Wl,--subsystem,windows
+LDFLAGS=-s
+EXECUTABLE=hashtwm
 SOURCE_DIR=src
-SOURCES=$(SOURCE_DIR)/main.c
+SOURCES=$(SOURCE_DIR)/main.c $(SOURCE_DIR)/dummy.c
 OBJECTS=$(SOURCES:.c=.o)
 
-all: $(EXECUTABLE)
+windows: $(EXECUTABLE)
+linux: $(EXECUTABLE)
+osx: $(EXECUTABLE)
+dummy: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) -s -Wl,--subsystem,windows $(OBJECTS) -o $@
+	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
 
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@
@@ -15,4 +20,4 @@ $(EXECUTABLE): $(OBJECTS)
 clean:
 	-rm $(OBJECTS) $(EXECUTABLE)
 
-.PHONY: all clean
+.PHONY: windows linux osx dummy clean
