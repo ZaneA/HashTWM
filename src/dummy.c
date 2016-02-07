@@ -6,15 +6,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int32_t driver_get_screen_count() {
+int32_t driver_get_screen_count()
+{
     return 1;
 }
 
-screen_t driver_get_screen(int32_t i) {
+screen_t driver_get_screen(int32_t i)
+{
     return NULL;
 }
 
-rect_t driver_get_screen_rect(screen_t s) {
+rect_t driver_get_screen_rect(screen_t s)
+{
     rect_t r = {
         .left = 0,
         .right = 200,
@@ -25,7 +28,8 @@ rect_t driver_get_screen_rect(screen_t s) {
     return r;
 }
 
-rect_t driver_get_window_rect(window_t w) {
+rect_t driver_get_window_rect(window_t w)
+{
     rect_t rect = {
         .left = 0,
         .right = 100,
@@ -36,30 +40,36 @@ rect_t driver_get_window_rect(window_t w) {
     return rect;
 }
 
-void driver_set_window_rect(window_t w, rect_t r) {
+void driver_set_window_rect(window_t w, rect_t r)
+{
     // noop
 }
 
-void driver_set_window_visible(window_t w, bool v) {
+void driver_set_window_visible(window_t w, bool v)
+{
     // noop
 }
 
-window_t driver_get_foreground_window() {
+window_t driver_get_foreground_window()
+{
     return NULL;
 }
 
-void driver_set_foreground_window(window_t w) {
+void driver_set_foreground_window(window_t w)
+{
     // noop
 }
 
-string_t driver_get_window_name(window_t w) {
+string_t driver_get_window_name(window_t w)
+{
     string_t temp = (string_t)malloc(strlen("Hello, World "));
     sprintf(temp, "%s", "Hello, World");
 
     return temp;
 }
 
-pos_t driver_get_cursor_position() {
+pos_t driver_get_cursor_position()
+{
     pos_t p = {
         .x = 50,
         .y = 50
@@ -68,42 +78,52 @@ pos_t driver_get_cursor_position() {
     return p;
 }
 
-void driver_set_cursor_position(pos_t p) {
+void driver_set_cursor_position(pos_t p)
+{
     // noop
 }
 
-void driver_set_cursor_rect(rect_t r) {
+void driver_set_cursor_rect(rect_t r)
+{
     // noop
 }
 
-bool driver_should_tile_window_p(window_t w) {
+bool driver_should_tile_window_p(window_t w)
+{
     return true;
 }
 
-void driver_enumerate_windows(cb_enumerate_windows_t f) {
+void driver_enumerate_windows(cb_enumerate_windows_t f)
+{
     // noop
 }
 
-void driver_hotkey_add(hotkey_t h, modkeys_t m, keys_t k) {
+void driver_hotkey_add(hotkey_t h, modkeys_t m, keys_t k)
+{
     // noop
 }
 
-void driver_hotkey_remove(hotkey_t h) {
+void driver_hotkey_remove(hotkey_t h)
+{
     // noop
 }
 
-void driver_message(string_t title, string_t msg) {
+void driver_message(string_t title, string_t msg)
+{
     printf("%s: %s\n", title, msg);
 }
 
-bool driver_init() {
+bool driver_init()
+{
     return true;
 }
 
-void driver_destroy() {
+void driver_destroy()
+{
     // noop
 }
 
-bool driver_main() {
+bool driver_main()
+{
     return true;
 }

@@ -65,8 +65,7 @@ enum timer_modes_e {
 };
 
 // Tags / Workspaces
-typedef struct
-{
+typedef struct {
     node_t nodes; // List of nodes
     node_t last_node;
     node_t current_window;
@@ -93,12 +92,14 @@ unsigned short g_include_count = 0;
 unsigned short g_include_mode = 0; // Exclude by default
 unsigned short g_one_tag_per_window = 0; // If 1, remove current tag_t when adding a new one
 
-bool util_is_in_list(char **list, unsigned int length, window_t window) {
+bool util_is_in_list(char **list, unsigned int length, window_t window)
+{
     string_t temp = driver_get_window_name(window);
 
     for (int i = 0; i < length; i++) {
         if (!strcmp(temp, list[i])) {
-            free(temp); return true;
+            free(temp);
+            return true;
         }
     }
 
@@ -133,7 +134,9 @@ node_t find_node_full(window_t window)
 
     for (tag_t = 0; tag_t < TAGS; tag_t++) {
         found = find_node(window, tag_t);
-        if (found) return found;
+        if (found) {
+            return found;
+        }
     }
 
     return NULL;
@@ -143,7 +146,9 @@ void add_node(window_t window, unsigned short tag_t)
 {
     node_t new_node;
 
-    if (find_node(window, tag_t)) return;
+    if (find_node(window, tag_t)) {
+        return;
+    }
 
     new_node = (node_t)malloc(sizeof(node_s));
     new_node->window = window;
@@ -171,7 +176,9 @@ void remove_node(window_t window, unsigned short tag_t)
     node_t temp;
     temp = find_node(window, tag_t);
 
-    if (!temp) return;
+    if (!temp) {
+        return;
+    }
 
     // Restore window layout
     driver_set_window_rect(window, temp->rect);
@@ -196,8 +203,9 @@ void remove_node(window_t window, unsigned short tag_t)
         ((node_t)temp->next)->prev = temp->prev;
     }
 
-    if (g_tags[tag_t].current_window == temp)
-    g_tags[tag_t].current_window = temp->prev;
+    if (g_tags[tag_t].current_window == temp) {
+        g_tags[tag_t].current_window = temp->prev;
+    }
 
     free(temp);
 
@@ -213,7 +221,8 @@ void remove_node_full(window_t window)
     }
 }
 
-node_t find_node_in_chain(node_t head, int idx) {
+node_t find_node_in_chain(node_t head, int idx)
+{
     node_t nd = head;
 
     if (!head) {
@@ -230,7 +239,9 @@ node_t find_node_in_chain(node_t head, int idx) {
 void swap_window_with_node(node_t window)
 {
 
-    if (g_tags[g_current_tag].current_window == window) return;
+    if (g_tags[g_current_tag].current_window == window) {
+        return;
+    }
     if (g_tags[g_current_tag].current_window && window) {
         window_t temp = window->window;
         window->window = g_tags[g_current_tag].current_window->window;
@@ -239,7 +250,8 @@ void swap_window_with_node(node_t window)
     }
 }
 
-void swap_window_with_first_non_master_window() {
+void swap_window_with_first_non_master_window()
+{
     node_t head = g_tags[g_current_tag].nodes;
     node_t current = g_tags[g_current_tag].current_window;
     int sub_node_idx = g_tags[g_current_tag].masterarea_count;
@@ -304,8 +316,9 @@ int count_nodes()
 void minimize_tag(unsigned short tag_t)
 {
     node_t temp;
-    for (temp=g_tags[tag_t].nodes; temp; temp = temp->next)
-    driver_set_window_visible(temp->window, false);
+    for (temp=g_tags[tag_t].nodes; temp; temp = temp->next) {
+        driver_set_window_visible(temp->window, false);
+    }
 }
 
 // This does the actual tiling
@@ -334,11 +347,9 @@ void arrange_windows()
             width = g_screen_width;
             height = g_screen_height;
         } else {
-            switch (g_tags[g_current_tag].tilingMode)
-            {
+            switch (g_tags[g_current_tag].tilingMode) {
                 default:
-                case MODE_VERTICAL:
-                {
+                case MODE_VERTICAL: {
                     if (i < masterarea_count) {
                         x = 0;
                         y = (g_screen_height / masterarea_count) * i;
@@ -352,8 +363,7 @@ void arrange_windows()
                     }
                 }
                 break;
-                case MODE_HORIZONTAL:
-                {
+                case MODE_HORIZONTAL: {
                     if (i < masterarea_count) {
                         // Main window
                         x = (g_screen_width / masterarea_count) * i;
@@ -369,8 +379,7 @@ void arrange_windows()
                     }
                 }
                 break;
-                case MODE_GRID: // See dvtm-license.txt
-                {
+                case MODE_GRID: { // See dvtm-license.txt
                     int ah, aw, rows, cols;
                     for (cols = 0; cols <= (a + 1)/2; cols++) {
                         if (cols * cols >= (a + 1)) {
@@ -396,11 +405,11 @@ void arrange_windows()
                 }
                 break;
                 case MODE_FULLSCREEN:
-                x = 0;
-                y = 0;
-                width = g_screen_width;
-                height = g_screen_height;
-                break;
+                    x = 0;
+                    y = 0;
+                    width = g_screen_width;
+                    height = g_screen_height;
+                    break;
             }
         }
 
@@ -420,7 +429,8 @@ void arrange_windows()
     focus_current();
 }
 
-void toggle_tag(unsigned short tag_t) {
+void toggle_tag(unsigned short tag_t)
+{
     window_t window = driver_get_foreground_window();
 
     if (find_node(window, tag_t)) {
@@ -495,13 +505,15 @@ void update_mouse_pos(window_t window)
 }
 
 // Add desktop windows to the grid to be tiled
-void enumerate_windows_add_proc(window_t w) {
+void enumerate_windows_add_proc(window_t w)
+{
     if (driver_should_tile_window_p(w)) {
         add_node(w, g_current_tag);
     }
 }
 
-void enumerate_windows_restore_proc(window_t w) {
+void enumerate_windows_restore_proc(window_t w)
+{
     if (driver_should_tile_window_p(w)) {
         driver_set_window_visible(w, true);
     }
@@ -516,7 +528,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 #else
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 #endif
 
     int i;
@@ -547,20 +560,19 @@ int main(int argc, char **argv) {
                 g_modkeys = 0;
 
                 for (y = 0; y < strlen(nextarg); y++) {
-                    switch (nextarg[y])
-                    {
+                    switch (nextarg[y]) {
                         case 'c':
-                        g_modkeys |= MODIFIER_CTRL;
-                        break;
+                            g_modkeys |= MODIFIER_CTRL;
+                            break;
                         case 'a':
-                        g_modkeys |= MODIFIER_ALT;
-                        break;
+                            g_modkeys |= MODIFIER_ALT;
+                            break;
                         case 's':
-                        g_modkeys |= MODIFIER_SHIFT;
-                        break;
+                            g_modkeys |= MODIFIER_SHIFT;
+                            break;
                         case 'w':
-                        g_modkeys |= MODIFIER_SUPER;
-                        break;
+                            g_modkeys |= MODIFIER_SUPER;
+                            break;
                     }
                 }
             } else if (!strcmp(arg, "-t")) {
