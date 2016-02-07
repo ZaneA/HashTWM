@@ -202,6 +202,20 @@ void remove_node_full(window_t window)
     }
 }
 
+node_t find_node_in_chain(node_t head, int idx) {
+    node_t nd = head;
+
+    if (!head) {
+        return NULL;
+    }
+
+    for (int i = 0; i < idx && nd; i++) {
+        nd = (node_t)nd->next;
+    }
+
+    return nd;
+}
+
 void swap_window_with_node(node_t *window)
 {
 
@@ -211,6 +225,17 @@ void swap_window_with_node(node_t *window)
         window->window = g_tags[g_current_tag].current_window->window;
         g_tags[g_current_tag].current_window->window = temp;
         g_tags[g_current_tag].current_window = window;
+    }
+}
+
+void swap_window_with_first_non_master_window() {
+    node_t head = g_tags[g_current_tag].nodes;
+    node_t current = g_tags[g_current_tag].current_window;
+    int sub_node_idx = g_tags[g_current_tag].masterarea_count;
+
+    if (current != head) {
+        node_t nd = find_node_in_chain(head, sub_node_idx);
+        swap_window_with_node(nd);
     }
 }
 

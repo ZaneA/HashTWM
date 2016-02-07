@@ -314,6 +314,7 @@ LRESULT CALLBACK WndProc(window_t window, UINT msg, WPARAM wParam, LPARAM lParam
             break;
 
             case KEY_INC_AREA:
+            swap_window_with_first_non_master_window();
             tags[current_tag].masterarea_count++;
             ArrangeWindows();
             break;
