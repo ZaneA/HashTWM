@@ -3,6 +3,8 @@ HashTWM
 
 A dwm-like automatic tiling window manager for Microsoft Windows, download at https://github.com/ZaneA/HashTWM
 
+`drivers` branch contains a work-in-progress refactor to something driver based, in order to support more platforms (only windows driver so far, and not compiling *YET*).
+
 Usage
 ---
 
