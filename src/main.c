@@ -273,6 +273,20 @@ void FullRemoveNode(HWND hwnd)
     RemoveNode(hwnd, tag);
 }
 
+node* FindNodeInChain(node* head, int idx)
+{
+    node* nd = head;
+	int i = 0;
+
+    if (!head) return NULL;
+
+    for (; i < idx && nd; i++) {
+        nd = (node*)nd->next;
+    }
+
+    return nd;
+}
+
 void SwapWindowWithNode(node *window)
 {
 
@@ -283,6 +297,19 @@ void SwapWindowWithNode(node *window)
     tags[current_tag].current_window->hwnd = temp;
     tags[current_tag].current_window = window;
   }
+}
+
+void SwapWindowWithFirstNonMasterWindow()
+{
+    node* head = tags[current_tag].nodes;
+    node* current = tags[current_tag].current_window;
+    int sub_node_idx = tags[current_tag].masterarea_count;
+
+    if (current != head)
+    {
+        node* nd = FindNodeInChain(head, sub_node_idx);
+        SwapWindowWithNode(nd);
+    }
 }
 
 void FocusCurrent()
@@ -408,6 +435,7 @@ void ArrangeWindows()
               height = (screen_height / 2) + margin;
             } else {
               // Normal windows to be tiled
+
               x = (screen_width / ((a + 1) - masterarea_count)) * (a - i);
               y = (screen_height / 2) + margin;
               width = (screen_width / ((a + 1) - masterarea_count));
@@ -677,6 +705,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
           break;
 
         case KEY_INC_AREA:
+          SwapWindowWithFirstNonMasterWindow();
           tags[current_tag].masterarea_count++;
           ArrangeWindows();
           break;
