@@ -31,6 +31,7 @@ Key bindings (By default mod is Ctrl + Alt)
     Mod + p - Force Untile Foreground window (useful in combination with above for moving windows to another monitor)
 
     Mod + 1-5 - Switch to tag
+    Mod + Left/Right - Switch to previous/next tag
     Mod + Shift + 1-5 - Move Window to tag
 
 
