@@ -40,6 +40,8 @@ enum controls {
   KEY_INC_AREA,
   KEY_DEC_AREA,
   KEY_CLOSE_WIN,
+  KEY_LEFT,
+  KEY_RIGHT,
   KEY_SWITCH_T1 = 100,
   KEY_TOGGLE_T1 = 200
 };
@@ -525,6 +527,8 @@ void RegisterHotkeys(HWND hwnd)
   RegisterHotKey(hwnd, KEY_INC_AREA, modkeys, 'Z');
   RegisterHotKey(hwnd, KEY_DEC_AREA, modkeys, 'X');
   RegisterHotKey(hwnd, KEY_CLOSE_WIN, modkeys, 'C');
+  RegisterHotKey(hwnd, KEY_LEFT, modkeys, VK_LEFT);
+  RegisterHotKey(hwnd, KEY_RIGHT, modkeys, VK_RIGHT);
 
   // Tags
   for (i = 0; i < TAGS; i++) {
@@ -717,6 +721,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         case KEY_CLOSE_WIN:
           PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0);
+          break;
+
+        case KEY_LEFT:
+          if(current_tag>0) {
+            MinimizeTag(current_tag);
+            current_tag--;
+            ArrangeWindows();
+          }
+          break;
+
+        case KEY_RIGHT:
+          if(current_tag<9) {
+            MinimizeTag(current_tag);
+            current_tag++;
+            ArrangeWindows();
+          }
           break;
       }
       break;
