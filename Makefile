@@ -1,4 +1,4 @@
-CFLAGS=-c -Wall
+CFLAGS=-c -std=c99 -Wall -pedantic -Wstrict-overflow -Wno-unused-parameter
 EXECUTABLE=hashtwm.exe
 SOURCE_DIR=src
 SOURCES=$(SOURCE_DIR)/main.c

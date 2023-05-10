@@ -104,15 +104,12 @@ UINT shellhookid; // Window Message id
 BOOL (__stdcall *RegisterShellHookWindow_)(HWND) = NULL; // RegisterShellHookWindow function. For compatibillity we get it out of the dll though it is in the headers now
 
 int IsInList(char **list, unsigned int length, HWND hwnd) {
-  int i;
-  LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128); // I don't like this, but it works
+  static char temp[128];
   GetClassName(hwnd, temp, 128);
 
-  for (i = 0; i < length; i++) {
-    if (!strcmp(temp, list[i])) { free(temp); return TRUE; }
+  for (int i = 0; i < length; i++) {
+    if (!strcmp(temp, list[i])) { return TRUE; }
   }
-
-  free(temp);
 
   return FALSE;
 }
@@ -141,24 +138,21 @@ int IsGoodWindow(HWND hwnd)
     }
 
     if ((((exstyle & WS_EX_TOOLWINDOW) == 0) && (owner == 0)) || ((exstyle & WS_EX_APPWINDOW) && (owner != 0))) {
-      int i;
-      LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
+      static char temp[128];
       GetClassName(hwnd, temp, 128);
 
       if (include_mode == 1) {
-        for (i = 0; i < MAX_IGNORE; i++) {
-          if (!strcmp(temp, includeClasses[i])) { free(temp); return TRUE; }
+        for (int i = 0; i < MAX_IGNORE; i++) {
+          if (!strcmp(temp, includeClasses[i])) { return TRUE; }
         }
 
-        free(temp);
         return FALSE;
       } else {
-        for (i = 0; i < MAX_IGNORE; i++) {
-          if (!strcmp(temp, ignoreClasses[i])) { free(temp); return FALSE; }
+        for (int i = 0; i < MAX_IGNORE; i++) {
+          if (!strcmp(temp, ignoreClasses[i])) { return FALSE; }
         }
       }
 
-      free(temp);
       return TRUE;
     }
   }
@@ -508,7 +502,6 @@ void ToggleTag(unsigned short tag) {
 void RegisterHotkeys(HWND hwnd)
 {
   char key[2];
-  int i;
 
   RegisterHotKey(hwnd, KEY_SELECT_UP, modkeys, 'K');
   RegisterHotKey(hwnd, KEY_SELECT_DOWN, modkeys, 'J');
@@ -531,7 +524,7 @@ void RegisterHotkeys(HWND hwnd)
   RegisterHotKey(hwnd, KEY_RIGHT, modkeys, VK_RIGHT);
 
   // Tags
-  for (i = 0; i < TAGS; i++) {
+  for (int i = 0; i < TAGS; i++) {
     sprintf(key, "%d", i + 1);
     RegisterHotKey(hwnd, KEY_SWITCH_T1 + i, modkeys, *key); // Switch to tag N
     RegisterHotKey(hwnd, KEY_TOGGLE_T1 + i, modkeys | MOD_SHIFT, *key); // Toggle tag N
@@ -540,8 +533,7 @@ void RegisterHotkeys(HWND hwnd)
 
 void UnregisterHotkeys(HWND hwnd)
 {
-  int i;
-  for (i = 1; i <= 27; i++) UnregisterHotKey(hwnd, i);
+  for (int i = 1; i <= 27; i++) UnregisterHotKey(hwnd, i);
 }
 
 void UpdateMousePos(HWND hwnd)
@@ -689,10 +681,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         case KEY_DISP_CLASS:
           {
-            LPSTR temp = (LPSTR)malloc(sizeof(TCHAR) * 128);
+            static char temp[128];
             GetClassName(GetForegroundWindow(), temp, 128);
             MessageBox(NULL, temp, "Window Class", MB_OK);
-            free(temp);
           }
           break;
 
@@ -808,7 +799,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   // Process command line
   LPWSTR *argv = NULL;
   int argc;
-  int i;
   unsigned short tilingMode = DEFAULT_TILING_MODE;
 
   // Ignore some windows by default
@@ -816,7 +806,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
   argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
-  for (i = 0; i < argc; i++) {
+  for (int i = 0; i < argc; i++) {
     char arg[128];
     wsprintfA(arg, "%S", argv[i]);
 
@@ -883,7 +873,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   }
 
   // Initialize tags
-  for (i = 0; i < TAGS; i++) {
+  for (int i = 0; i < TAGS; i++) {
     tags[i].nodes = NULL;
     tags[i].last_node = NULL;
     tags[i].current_window = NULL;
