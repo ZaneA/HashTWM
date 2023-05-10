@@ -811,6 +811,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   int i;
   unsigned short tilingMode = DEFAULT_TILING_MODE;
 
+  // Ignore some windows by default
+  sprintf(ignoreClasses[ignoreCount++], "%s", "Windows.UI.Core.CoreWindow");
+
   argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
   for (i = 0; i < argc; i++) {
