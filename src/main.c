@@ -319,7 +319,7 @@ void FocusCurrent()
   node *current = tags[current_tag].current_window;
 
   if (current) {
-    SetForegroundWindow(current->hwnd);
+    SetForegroundWindow(GetLastActivePopup(current->hwnd));
 
     if (lockMouse) {
       RECT window;
